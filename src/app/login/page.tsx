@@ -50,17 +50,17 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-slate-100">
-      {/* Fondo con imagen de referencia estilizada */}
+      {/* Fondo con imagen de taller moderno y ferretería de precisión Once y Dos */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.png"
-          alt="Fondo Sistema"
+          alt="Ferretería Once y Dos - Salón & Taller Moderno"
           fill
-          className="object-cover opacity-85 filter blur-[0.5px]"
+          className="object-cover opacity-90"
           priority
         />
-        {/* Overlay degradado suave para asegurar contraste */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/70 via-white/50 to-white/75 backdrop-blur-[2px]" />
+        {/* Overlay degradado para asegurar máxima legibilidad y calidez */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/80 via-white/60 to-slate-900/10 backdrop-blur-[0.5px]" />
       </div>
 
       {/* Pilares decorativos laterales (como en la referencia) */}
