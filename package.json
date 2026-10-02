@@ -4,7 +4,7 @@
   "private": true,
   "description": "Sistema de Gestión Integral de Stock, POS, Presupuestos y Cobros para Ferretería Once y Dos - powered by puntoAR",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
