@@ -18,6 +18,11 @@ import {
   Trash2,
   DollarSign,
   Eye,
+  Share2,
+  Mail,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import {
   getQuotes,
@@ -42,7 +47,52 @@ export default function PresupuestosPage() {
   const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState('');
   const [advancePayment, setAdvancePayment] = useState(0);
 
+  // Modal de notificación de fecha de visita
+  const [createdOTModal, setCreatedOTModal] = useState<{ order: any; quote: Quote } | null>(null);
+  const [copiedQuoteId, setCopiedQuoteId] = useState<string | null>(null);
+
   const technician = getCurrentUser();
+
+  const getPublicUrl = (quoteNumber: string) => {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}/presupuesto/${quoteNumber}`;
+  };
+
+  const shareViaWhatsApp = (q: Quote) => {
+    const url = getPublicUrl(q.quoteNumber);
+    const cleanPhone = q.clientPhone.replace(/\D/g, '');
+    const text = `Hola ${q.clientName}, le enviamos el presupuesto de Ferretería Once y Dos para "${q.title}" por un total de $${q.total.toLocaleString('es-AR')}. Validez: ${q.validityDays} días. Puede revisarlo con fotos y ACEPTAR o RECHAZAR desde este link: ${url}`;
+    const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const shareViaEmail = (q: Quote) => {
+    const url = getPublicUrl(q.quoteNumber);
+    const subject = `Presupuesto ${q.quoteNumber} - Ferretería Once y Dos`;
+    const body = `Estimado/a ${q.clientName},\n\nLe enviamos el presupuesto para el trabajo "${q.title}" por un importe total de $${q.total.toLocaleString('es-AR')}.\n\nValidez: ${q.validityDays} días.\n\nPuede ver el detalle con materiales, fotos y ACEPTAR o RECHAZAR la cotización directamente en el siguiente enlace:\n${url}\n\nMuchas gracias.\nFerretería Once y Dos - powered by puntoAR`;
+    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  };
+
+  const copyApprovalLink = (q: Quote) => {
+    const url = getPublicUrl(q.quoteNumber);
+    navigator.clipboard.writeText(url);
+    setCopiedQuoteId(q.id);
+    setTimeout(() => setCopiedQuoteId(null), 2500);
+  };
+
+  // Enviar mensaje de fecha de visita pactada
+  const notifyVisitDateWhatsApp = (order: any, quote: Quote) => {
+    const cleanPhone = quote.clientPhone.replace(/\D/g, '');
+    const text = `Hola ${quote.clientName}, confirmamos la recepción y aceptación de su presupuesto. Se ha generado la Orden de Trabajo N° ${order.orderNumber}. La fecha pactada de visita/reparación es el ${order.estimatedDeliveryDate}. Muchas gracias por confiar en Ferretería Once y Dos.`;
+    const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const notifyVisitDateEmail = (order: any, quote: Quote) => {
+    const subject = `Orden de Trabajo ${order.orderNumber} - Fecha Pactada de Visita - Once y Dos`;
+    const body = `Estimado/a ${quote.clientName},\n\nConfirmamos la aceptación del presupuesto para "${quote.title}".\n\nSe ha generado formalmente la Orden de Trabajo N° ${order.orderNumber}.\nLa fecha tentativa acordada para la visita/reparación es el ${order.estimatedDeliveryDate}.\nTécnico asignado: ${order.technicianName}.\n\nMuchas gracias por confiar en Ferretería Once y Dos.`;
+    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  };
 
   // Formulario de presupuesto
   const [formData, setFormData] = useState({
@@ -224,7 +274,11 @@ export default function PresupuestosPage() {
     e.preventDefault();
     if (!quoteToAccept || !estimatedDeliveryDate) return;
 
-    acceptQuoteAndCreateWorkOrder(quoteToAccept.id, estimatedDeliveryDate, Number(advancePayment));
+    const newOrder = acceptQuoteAndCreateWorkOrder(quoteToAccept.id, estimatedDeliveryDate, Number(advancePayment));
+    setCreatedOTModal({
+      order: newOrder,
+      quote: quoteToAccept,
+    });
     setQuoteToAccept(null);
     setEstimatedDeliveryDate('');
     setAdvancePayment(0);
@@ -246,7 +300,7 @@ export default function PresupuestosPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Cotizaciones en el lugar con fotos tomadas con la cámara del celular. Al aceptarse generan la Orden de Trabajo con fecha tentativa de entrega.
+            Envío de presupuestos vía WhatsApp / Email con validez configurable y link de aprobación para el cliente.
           </p>
         </div>
 
@@ -263,6 +317,7 @@ export default function PresupuestosPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {quotes.map((q) => {
           const isAccepted = q.status === 'ACEPTADO';
+          const isCopied = copiedQuoteId === q.id;
 
           return (
             <div
@@ -272,26 +327,31 @@ export default function PresupuestosPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-mono font-bold text-xs text-slate-400">{q.quoteNumber}</span>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      q.status === 'ACEPTADO'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : q.status === 'ENVIADO'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {q.status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
+                      Validez: {q.validityDays}d
+                    </span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        q.status === 'ACEPTADO'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : q.status === 'ENVIADO'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {q.status}
+                    </span>
+                  </div>
                 </div>
 
                 <h3 className="font-bold text-base text-slate-900 mb-1 leading-snug">{q.title}</h3>
                 <p className="text-xs text-slate-500 mb-3 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{q.clientName}</span>
+                  <span>{q.clientName} &bull; {q.clientPhone}</span>
                 </p>
 
-                <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1 mb-4">
+                <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1 mb-3">
                   <div className="flex items-center gap-1 text-[11px] text-slate-500">
                     <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
                     <span className="truncate">{q.workAddress || 'En ferretería'}</span>
@@ -302,9 +362,53 @@ export default function PresupuestosPage() {
                   </div>
                 </div>
 
+                {/* Botones de Envío al Cliente con Link de Aprobación */}
+                <div className="bg-amber-50/60 p-2.5 rounded-2xl border border-amber-200/70 mb-3 space-y-2">
+                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
+                    Enviar al Cliente para Aprobación:
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      onClick={() => shareViaWhatsApp(q)}
+                      className="py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs transition-colors"
+                      title="Enviar por WhatsApp"
+                    >
+                      <Share2 className="w-3 h-3" />
+                      <span>WhatsApp</span>
+                    </button>
+
+                    <button
+                      onClick={() => shareViaEmail(q)}
+                      className="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs transition-colors"
+                      title="Enviar por Email"
+                    >
+                      <Mail className="w-3 h-3" />
+                      <span>Email</span>
+                    </button>
+
+                    <button
+                      onClick={() => copyApprovalLink(q)}
+                      className="py-1.5 px-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors"
+                      title="Copiar Link Público"
+                    >
+                      {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                      <span>{isCopied ? 'Copiado' : 'Link'}</span>
+                    </button>
+                  </div>
+
+                  <a
+                    href={`/presupuesto/${q.quoteNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center text-[10px] font-bold text-amber-800 hover:text-amber-900 hover:underline pt-0.5"
+                  >
+                    Ver vista del cliente (Portal Público) &rarr;
+                  </a>
+                </div>
+
                 {/* Galería de fotos del relevamiento */}
                 {q.photos.length > 0 && (
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                       Relevamiento Fotográfico ({q.photos.length} fotos)
                     </span>
@@ -312,7 +416,7 @@ export default function PresupuestosPage() {
                       {q.photos.map((p, idx) => (
                         <div
                           key={idx}
-                          className="w-14 h-14 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 relative"
+                          className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 relative"
                         >
                           <img src={p.url} alt={`Foto ${idx}`} className="w-full h-full object-cover" />
                         </div>
@@ -334,7 +438,6 @@ export default function PresupuestosPage() {
                   <button
                     onClick={() => {
                       setQuoteToAccept(q);
-                      // Sugerir fecha tentativa 3 días hábiles adelante
                       const d = new Date();
                       d.setDate(d.getDate() + 3);
                       setEstimatedDeliveryDate(d.toISOString().slice(0, 10));
@@ -345,9 +448,11 @@ export default function PresupuestosPage() {
                     <span>Aceptar & Generar Orden de Trabajo</span>
                   </button>
                 ) : (
-                  <div className="p-2 bg-emerald-50 rounded-xl text-center text-xs font-bold text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Orden de Trabajo Generada</span>
+                  <div className="space-y-2">
+                    <div className="p-2 bg-emerald-50 rounded-xl text-center text-xs font-bold text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Presupuesto Aceptado &bull; OT Generada</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -552,6 +657,25 @@ export default function PresupuestosPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Validez del Presupuesto (Días de Vigencia)
+                  </label>
+                  <select
+                    value={formData.validityDays}
+                    onChange={(e) => setFormData({ ...formData, validityDays: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold"
+                  >
+                    <option value={5}>5 días de validez</option>
+                    <option value={10}>10 días de validez</option>
+                    <option value={15}>15 días de validez (Recomendado)</option>
+                    <option value={30}>30 días de validez</option>
+                    <option value={60}>60 días de validez</option>
+                  </select>
+                </div>
+              </div>
+
               {/* Resumen Total */}
               <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-200 flex items-center justify-between">
                 <div>
@@ -662,6 +786,55 @@ export default function PresupuestosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Notificar al Cliente la Fecha de Visita Pactada */}
+      {createdOTModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 border border-slate-200 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-700 flex items-center justify-center mx-auto mb-1">
+              <Calendar className="w-6 h-6 text-amber-600" />
+            </div>
+            <h3 className="font-bold text-slate-900 text-base text-center">
+              ¡Orden de Trabajo Generada!
+            </h3>
+            <p className="text-xs text-slate-600 text-center">
+              Se ha creado la Orden <strong>{createdOTModal.order.orderNumber}</strong> con fecha pactada para el <strong>{createdOTModal.order.estimatedDeliveryDate}</strong>.
+            </p>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1.5 text-slate-700">
+              <span className="font-bold block text-slate-900">Mensaje a enviar al cliente:</span>
+              <p className="italic text-[11px] bg-white p-2.5 rounded-xl border border-slate-200/60">
+                &ldquo;Hola {createdOTModal.quote.clientName}, confirmamos la recepción y aceptación de su presupuesto. Se ha generado la Orden de Trabajo N° {createdOTModal.order.orderNumber}. La fecha tentativa pactada de visita/reparación es el {createdOTModal.order.estimatedDeliveryDate}. Muchas gracias por confiar en Ferretería Once y Dos.&rdquo;
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={() => notifyVisitDateWhatsApp(createdOTModal.order, createdOTModal.quote)}
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Enviar Notificación por WhatsApp</span>
+              </button>
+
+              <button
+                onClick={() => notifyVisitDateEmail(createdOTModal.order, createdOTModal.quote)}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              >
+                <Mail className="w-4 h-4" />
+                <span>Enviar Notificación por Email</span>
+              </button>
+
+              <button
+                onClick={() => setCreatedOTModal(null)}
+                className="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

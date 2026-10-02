@@ -259,9 +259,44 @@ export function saveQuote(quote: Quote): void {
 
   addAuditLog({
     action: index >= 0 ? 'MODIFICAR_PRESUPUESTO' : 'CREAR_PRESUPUESTO',
-    details: `Presupuesto ${quote.quoteNumber}: ${quote.title} - Total: $${quote.total} (${quote.status})`,
+    details: `Presupuesto ${quote.quoteNumber}: ${quote.title} - Total: $${quote.total} (${quote.status}). Validez: ${quote.validityDays} días`,
     category: 'PRESUPUESTO',
   });
+}
+
+export function respondToQuoteByClient(
+  quoteId: string,
+  response: 'ACEPTADO' | 'RECHAZADO',
+  clientNotes?: string
+): Quote {
+  const quotes = getQuotes();
+  const qIndex = quotes.findIndex((q) => q.id === quoteId || q.quoteNumber === quoteId);
+  if (qIndex < 0) throw new Error('Presupuesto no encontrado');
+
+  const quote = quotes[qIndex];
+  quote.status = response;
+  if (clientNotes) {
+    quote.description = `${quote.description}\n[Nota del Cliente al ${response}]: ${clientNotes}`;
+  }
+
+  quotes[qIndex] = quote;
+  safeSet(STORAGE_KEYS.QUOTES, quotes);
+
+  addAuditLog({
+    action: `RESPUESTA_CLIENTE_PRESUPUESTO_${response}`,
+    details: `El cliente respondió al presupuesto ${quote.quoteNumber}: ${response}. ${clientNotes ? `Nota: ${clientNotes}` : ''}`,
+    category: 'PRESUPUESTO',
+  });
+
+  addSystemNotification({
+    title: `Presupuesto ${quote.quoteNumber} ${response} por el cliente`,
+    message: `El cliente ${quote.clientName} ha respondido '${response}' al presupuesto '${quote.title}' por $${quote.total.toLocaleString('es-AR')}.`,
+    type: response === 'ACEPTADO' ? 'COBRO_OT' : 'SISTEMA',
+    priority: response === 'ACEPTADO' ? 'ALTA' : 'NORMAL',
+    requiresEvidence: false,
+  });
+
+  return quote;
 }
 
 export function acceptQuoteAndCreateWorkOrder(
@@ -316,6 +351,93 @@ export function acceptQuoteAndCreateWorkOrder(
 
 export function getWorkOrders(): WorkOrder[] {
   return safeGet<WorkOrder[]>(STORAGE_KEYS.WORK_ORDERS, []);
+}
+
+export function addWorkOrderDirect(order: Omit<WorkOrder, 'id' | 'orderNumber' | 'createdAt'>): WorkOrder {
+  const workOrders = getWorkOrders();
+  const otNumber = `OT-2026-${String(workOrders.length + 1).padStart(4, '0')}`;
+
+  const newOrder: WorkOrder = {
+    ...order,
+    id: `ot-${Date.now()}`,
+    orderNumber: otNumber,
+    createdAt: new Date().toISOString(),
+  };
+
+  workOrders.unshift(newOrder);
+  safeSet(STORAGE_KEYS.WORK_ORDERS, workOrders);
+
+  addAuditLog({
+    action: 'CREAR_OT_DIRECTA',
+    details: `Orden de Trabajo directa creada ${otNumber}: ${newOrder.title}. Cliente: ${newOrder.clientName}. Entrega estimada: ${newOrder.estimatedDeliveryDate}. Total: $${newOrder.totalAmount}`,
+    category: 'PRESUPUESTO',
+  });
+
+  return newOrder;
+}
+
+export function finalizeWorkOrderAndInvoice(
+  orderId: string,
+  paymentMethod: { type: 'EFECTIVO' | 'CHEQUE' | 'BILLETERA' | 'TARJETA' | 'CTA_CTE'; reference?: string },
+  completionNotes?: string,
+  completionPhotos?: any[]
+): { order: WorkOrder; sale: Sale } {
+  const orders = getWorkOrders();
+  const index = orders.findIndex((o) => o.id === orderId);
+  if (index < 0) throw new Error('Orden de trabajo no encontrada');
+
+  const order = orders[index];
+  const now = new Date().toISOString();
+
+  // Actualizar estado de la OT a COBRADA
+  order.status = 'COBRADA';
+  order.completedAt = now;
+  order.completionNotes = completionNotes || 'Trabajo finalizado y facturado.';
+  if (completionPhotos && completionPhotos.length > 0) {
+    order.photos = [...order.photos, ...completionPhotos];
+  }
+  const remainingAmount = order.remainingBalance;
+  order.remainingBalance = 0;
+
+  orders[index] = order;
+  safeSet(STORAGE_KEYS.WORK_ORDERS, orders);
+
+  // Generar Factura / Venta oficial
+  const user = getCurrentUser();
+  const sale = registerSale({
+    cashierId: user.id,
+    cashierName: user.name,
+    clientId: order.clientId,
+    clientName: order.clientName,
+    items: [
+      {
+        productId: 'serv-ot',
+        code: order.orderNumber,
+        name: `Servicio / Obra: ${order.title}`,
+        unitPrice: order.totalAmount,
+        quantity: 1,
+        subtotal: order.totalAmount,
+      },
+    ],
+    subtotal: order.totalAmount,
+    discount: order.advancePayment, // El anticipo figura como deducción de cobro final
+    total: remainingAmount,
+    payments: [
+      {
+        type: paymentMethod.type,
+        amount: remainingAmount,
+        reference: paymentMethod.reference || `Liquidación final de ${order.orderNumber}`,
+      },
+    ],
+  });
+
+  addAuditLog({
+    action: 'FINALIZACION_Y_FACTURACION_OT',
+    details: `OT ${order.orderNumber} finalizada y facturada con ticket ${sale.receiptNumber}. Cobro de saldo $${remainingAmount} vía ${paymentMethod.type}`,
+    category: 'VENTA',
+  });
+
+  return { order, sale };
 }
 
 export function updateWorkOrder(order: WorkOrder): void {
