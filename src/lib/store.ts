@@ -14,6 +14,9 @@ import {
   AuditLogEntry,
   SystemErrorLog,
   DevMessage,
+  AppModule,
+  RolePermissions,
+  UserRole,
 } from '@/types';
 import {
   INITIAL_USERS,
@@ -25,6 +28,7 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_QUOTES,
   INITIAL_WORK_ORDERS,
+  DEFAULT_ROLE_PERMISSIONS,
 } from './seed/data';
 
 const STORAGE_KEYS = {
@@ -42,6 +46,7 @@ const STORAGE_KEYS = {
   AUDIT_LOGS: 'onceydos_audit_logs',
   ERROR_LOGS: 'onceydos_error_logs',
   DEV_MESSAGES: 'onceydos_dev_messages',
+  ROLE_PERMISSIONS: 'onceydos_role_permissions',
 };
 
 function safeGet<T>(key: string, fallback: T): T {
@@ -72,11 +77,16 @@ export function initStore(): void {
     const seed = generateSeedProducts(200);
     safeSet(STORAGE_KEYS.PRODUCTS, seed);
   }
-  if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
+  
+  // Siempre asegurar los 4 roles actualizados
+  const currentUsers = safeGet<User[]>(STORAGE_KEYS.USERS, []);
+  if (!currentUsers.some((u) => u.role === 'ADMIN_SISTEMA')) {
     safeSet(STORAGE_KEYS.USERS, INITIAL_USERS);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
     safeSet(STORAGE_KEYS.CURRENT_USER, INITIAL_USERS[0]);
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.ROLE_PERMISSIONS)) {
+    safeSet(STORAGE_KEYS.ROLE_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS);
   }
   if (!localStorage.getItem(STORAGE_KEYS.SUPPLIERS)) {
     safeSet(STORAGE_KEYS.SUPPLIERS, INITIAL_SUPPLIERS);
@@ -110,6 +120,52 @@ export function initStore(): void {
       },
     ]);
   }
+}
+
+// --- PERMISOS Y ROLES CONFIGURABLES ---
+export function getRolePermissions(): RolePermissions[] {
+  return safeGet<RolePermissions[]>(STORAGE_KEYS.ROLE_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS);
+}
+
+export function updateRolePermissions(role: UserRole, allowedModules: AppModule[]): void {
+  const permissions = getRolePermissions();
+  const index = permissions.findIndex((p) => p.role === role);
+  if (index >= 0) {
+    permissions[index].allowedModules = allowedModules;
+    safeSet(STORAGE_KEYS.ROLE_PERMISSIONS, permissions);
+
+    addAuditLog({
+      action: 'MODIFICAR_PERMISOS_ROL',
+      details: `Permisos modificados para rol ${role}. Módulos permitidos: ${allowedModules.join(', ')}`,
+      category: 'SEGURIDAD',
+    });
+  }
+}
+
+export function resetRolePermissions(): void {
+  safeSet(STORAGE_KEYS.ROLE_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS);
+  addAuditLog({
+    action: 'RESTAURAR_PERMISOS',
+    details: 'Permisos de roles restaurados a la configuración inicial por defecto',
+    category: 'SEGURIDAD',
+  });
+}
+
+export function canUserAccessModule(user: User | null, module: AppModule): boolean {
+  if (!user) return false;
+  // Administrador del sistema siempre tiene acceso a todo
+  if (user.role === 'ADMIN_SISTEMA') return true;
+
+  // Solo Administrador del Sistema puede acceder a licencias, auditoría y configuración de accesos
+  if (['LICENCIAS', 'AUDITORIA', 'ACCESOS'].includes(module)) {
+    return false;
+  }
+
+  const permissions = getRolePermissions();
+  const rolePerm = permissions.find((p) => p.role === user.role);
+  if (!rolePerm) return false;
+
+  return rolePerm.allowedModules.includes(module);
 }
 
 // --- USUARIO ACTUAL Y SESIÓN ---

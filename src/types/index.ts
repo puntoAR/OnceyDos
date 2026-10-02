@@ -1,4 +1,23 @@
-export type UserRole = 'ADMIN' | 'CAJERO' | 'TECNICO' | 'DEPOSITO';
+export type UserRole = 'ADMIN_SISTEMA' | 'ADMIN' | 'TECNICO' | 'CAJERO';
+
+export type AppModule =
+  | 'DASHBOARD'
+  | 'STOCK'
+  | 'POS'
+  | 'PRESUPUESTOS'
+  | 'ORDENES_TRABAJO'
+  | 'FINANZAS'
+  | 'ALERTAS'
+  | 'LICENCIAS'
+  | 'AUDITORIA'
+  | 'ACCESOS';
+
+export interface RolePermissions {
+  role: UserRole;
+  label: string;
+  description: string;
+  allowedModules: AppModule[];
+}
 
 export interface User {
   id: string;

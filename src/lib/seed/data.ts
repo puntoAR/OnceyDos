@@ -1,34 +1,86 @@
-import { Product, Supplier, Client, User, FinancialObligation, SystemNotification, LicenseInfo, Quote, WorkOrder } from '@/types';
+import { Product, Supplier, Client, User, FinancialObligation, SystemNotification, LicenseInfo, Quote, WorkOrder, RolePermissions, AppModule, UserRole } from '@/types';
 import { getProductPlaceholderSvg } from '../media';
+
+export const DEFAULT_ROLE_PERMISSIONS: RolePermissions[] = [
+  {
+    role: 'ADMIN_SISTEMA',
+    label: 'Administrador del Sistema',
+    description: 'Acceso total a todo el sistema y todas las configuraciones avanzadas, licencias y auditoría.',
+    allowedModules: [
+      'DASHBOARD',
+      'STOCK',
+      'POS',
+      'PRESUPUESTOS',
+      'ORDENES_TRABAJO',
+      'FINANZAS',
+      'ALERTAS',
+      'LICENCIAS',
+      'AUDITORIA',
+      'ACCESOS',
+    ],
+  },
+  {
+    role: 'ADMIN',
+    label: 'Administrador',
+    description: 'Acceso operativo completo: panel principal, inventario, venta mostrador, presupuestos in situ y órdenes de trabajo.',
+    allowedModules: [
+      'DASHBOARD',
+      'STOCK',
+      'POS',
+      'PRESUPUESTOS',
+      'ORDENES_TRABAJO',
+      'FINANZAS',
+      'ALERTAS',
+    ],
+  },
+  {
+    role: 'TECNICO',
+    label: 'Técnico de Obra',
+    description: 'Acceso restringido a inventario/stock de insumos y presupuestos in situ para obras.',
+    allowedModules: [
+      'STOCK',
+      'PRESUPUESTOS',
+    ],
+  },
+  {
+    role: 'CAJERO',
+    label: 'Mostrador / Caja',
+    description: 'Acceso a inventario/stock y venta de mostrador (POS / facturación).',
+    allowedModules: [
+      'STOCK',
+      'POS',
+    ],
+  },
+];
 
 export const INITIAL_USERS: User[] = [
   {
     id: 'u-1',
+    username: 'admin_sistema',
+    name: 'Carlos Arrieta (Admin Sistema)',
+    role: 'ADMIN_SISTEMA',
+    email: 'sistemas@onceydos.com.ar',
+  },
+  {
+    id: 'u-2',
     username: 'admin',
-    name: 'Carlos Arrieta (Administrador)',
+    name: 'Mariana Gerente (Administradora)',
     role: 'ADMIN',
     email: 'administracion@onceydos.com.ar',
   },
   {
-    id: 'u-2',
-    username: 'cajero',
-    name: 'Martín Gómez (Mostrador / Caja)',
-    role: 'CAJERO',
-    email: 'caja@onceydos.com.ar',
-  },
-  {
     id: 'u-3',
     username: 'tecnico',
-    name: 'Gonzalo Fernández (Técnico de Obras)',
+    name: 'Gonzalo Fernández (Técnico de Obra)',
     role: 'TECNICO',
     email: 'obras@onceydos.com.ar',
   },
   {
     id: 'u-4',
-    username: 'deposito',
-    name: 'Lucía Benítez (Encargada de Stock)',
-    role: 'DEPOSITO',
-    email: 'deposito@onceydos.com.ar',
+    username: 'cajero',
+    name: 'Martín Gómez (Mostrador / Caja)',
+    role: 'CAJERO',
+    email: 'caja@onceydos.com.ar',
   },
 ];
 

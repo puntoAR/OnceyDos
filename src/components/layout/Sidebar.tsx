@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -15,9 +15,10 @@ import {
   KeyRound,
   FileText,
   X,
-  ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
-import { getCurrentUser, getNotifications } from '@/lib/store';
+import { getCurrentUser, getNotifications, canUserAccessModule } from '@/lib/store';
+import { User, AppModule } from '@/types';
 
 interface Props {
   isOpen: boolean;
@@ -26,26 +27,51 @@ interface Props {
 
 export function Sidebar({ isOpen, onClose }: Props) {
   const pathname = usePathname();
-  const user = getCurrentUser();
-  const activeAlerts = getNotifications().filter((n) => n.active && (n.requiresEvidence || n.priority === 'URGENTE')).length;
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [activeAlerts, setActiveAlerts] = useState<number>(0);
 
-  const navItems = [
-    { label: 'Panel Principal', href: '/', icon: LayoutDashboard, roles: ['ADMIN', 'CAJERO', 'TECNICO', 'DEPOSITO'] },
-    { label: 'Inventario & Stock (10k)', href: '/stock', icon: Boxes, roles: ['ADMIN', 'CAJERO', 'TECNICO', 'DEPOSITO'] },
-    { label: 'Venta Mostrador (POS)', href: '/pos', icon: ShoppingCart, roles: ['ADMIN', 'CAJERO'] },
-    { label: 'Presupuestos In Situ', href: '/presupuestos', icon: Smartphone, roles: ['ADMIN', 'TECNICO'] },
-    { label: 'Órdenes de Trabajo', href: '/ordenes-trabajo', icon: Wrench, roles: ['ADMIN', 'TECNICO', 'DEPOSITO'] },
-    { label: 'Finanzas & Cheques', href: '/finanzas', icon: Landmark, roles: ['ADMIN'] },
+  const refreshData = () => {
+    const user = getCurrentUser();
+    setCurrentUser(user);
+    const alerts = getNotifications().filter(
+      (n) => n.active && (n.requiresEvidence || n.priority === 'URGENTE')
+    ).length;
+    setActiveAlerts(alerts);
+  };
+
+  useEffect(() => {
+    refreshData();
+    window.addEventListener('onceydos_storage_update', refreshData);
+    return () => window.removeEventListener('onceydos_storage_update', refreshData);
+  }, []);
+
+  const navItems: {
+    label: string;
+    href: string;
+    icon: any;
+    module: AppModule;
+    badge?: number;
+  }[] = [
+    { label: 'Panel Principal', href: '/', icon: LayoutDashboard, module: 'DASHBOARD' },
+    { label: 'Inventario & Stock (10k)', href: '/stock', icon: Boxes, module: 'STOCK' },
+    { label: 'Venta Mostrador (POS)', href: '/pos', icon: ShoppingCart, module: 'POS' },
+    { label: 'Presupuestos In Situ', href: '/presupuestos', icon: Smartphone, module: 'PRESUPUESTOS' },
+    { label: 'Órdenes de Trabajo', href: '/ordenes-trabajo', icon: Wrench, module: 'ORDENES_TRABAJO' },
+    { label: 'Finanzas & Cheques', href: '/finanzas', icon: Landmark, module: 'FINANZAS' },
     {
       label: 'Alertas de Transacción',
       href: '/alertas',
       icon: BellRing,
-      roles: ['ADMIN', 'CAJERO'],
+      module: 'ALERTAS',
       badge: activeAlerts > 0 ? activeAlerts : undefined,
     },
-    { label: 'Licencia & Actualizaciones', href: '/licencias', icon: KeyRound, roles: ['ADMIN'] },
-    { label: 'Auditoría & Diagnóstico', href: '/auditoria', icon: FileText, roles: ['ADMIN'] },
+    { label: 'Licencia & Actualizaciones', href: '/licencias', icon: KeyRound, module: 'LICENCIAS' },
+    { label: 'Auditoría & Permisos', href: '/auditoria', icon: FileText, module: 'AUDITORIA' },
   ];
+
+  const visibleNavItems = navItems.filter((item) =>
+    currentUser ? canUserAccessModule(currentUser, item.module) : false
+  );
 
   return (
     <>
@@ -83,12 +109,21 @@ export function Sidebar({ isOpen, onClose }: Props) {
           </button>
         </div>
 
+        {/* Indicador de rol activo */}
+        {currentUser && (
+          <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800/80 flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-medium">Puesto actual:</span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-black bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+              {currentUser.role}
+            </span>
+          </div>
+        )}
+
         {/* Lista de navegación */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
-            const isAuthorized = item.roles.includes(user.role);
 
             return (
               <Link
@@ -98,9 +133,7 @@ export function Sidebar({ isOpen, onClose }: Props) {
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive
                     ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                    : isAuthorized
-                    ? 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                    : 'text-slate-500 hover:bg-slate-800/40 opacity-70'
+                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
                 }`}
               >
                 <div className="flex items-center space-x-3">

@@ -8,7 +8,7 @@ import { setCurrentUser, getUsers } from '@/lib/store';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('admin');
+  const [username, setUsername] = useState('admin_sistema');
   const [password, setPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -31,11 +31,18 @@ export default function LoginPage() {
     // Login exitoso
     setTimeout(() => {
       setCurrentUser(found);
-      router.push('/');
+      // Redirigir según el rol
+      if (found.role === 'TECNICO') {
+        router.push('/stock');
+      } else if (found.role === 'CAJERO') {
+        router.push('/pos');
+      } else {
+        router.push('/');
+      }
     }, 400);
   };
 
-  const handleQuickFill = (userType: 'admin' | 'cajero' | 'tecnico' | 'deposito') => {
+  const handleQuickFill = (userType: string) => {
     setUsername(userType);
     setPassword('123456');
     setError('');
@@ -163,10 +170,10 @@ export default function LoginPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-1.5">
             {[
-              { id: 'admin', label: 'Dueño (Admin)' },
-              { id: 'cajero', label: 'Caja (POS)' },
-              { id: 'tecnico', label: 'Técnico Obras' },
-              { id: 'deposito', label: 'Depósito' },
+              { id: 'admin_sistema', label: 'Admin Sistema' },
+              { id: 'admin', label: 'Administrador' },
+              { id: 'tecnico', label: 'Técnico Obra' },
+              { id: 'cajero', label: 'Mostrador / Caja' },
             ].map((r) => (
               <button
                 key={r.id}

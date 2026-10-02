@@ -13,7 +13,7 @@ import {
   Menu,
   AlertTriangle,
 } from 'lucide-react';
-import { getCurrentUser, setCurrentUser, getUsers, getNotifications, getLicense } from '@/lib/store';
+import { getCurrentUser, setCurrentUser, getUsers, getNotifications, getLicense, canUserAccessModule } from '@/lib/store';
 import { User, SystemNotification, LicenseInfo } from '@/types';
 import { AboutModal } from '../dev-support/AboutModal';
 import { DevChatModal } from '../dev-support/DevChatModal';
@@ -90,8 +90,8 @@ export function Navbar({ onToggleSidebar }: Props) {
 
           {/* Acciones del Navbar */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Estado de Licencia */}
-            {license && (
+            {/* Estado de Licencia (solo visible para Administrador del Sistema) */}
+            {canUserAccessModule(currentUser, 'LICENCIAS') && license && (
               <Link
                 href="/licencias"
                 className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
@@ -175,8 +175,18 @@ export function Navbar({ onToggleSidebar }: Props) {
                         <span className="block">{u.name}</span>
                         <span className="text-[10px] text-slate-400">{u.email}</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-600 uppercase">
-                        {u.role}
+                      <span
+                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                          u.role === 'ADMIN_SISTEMA'
+                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                            : u.role === 'ADMIN'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            : u.role === 'TECNICO'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            : 'bg-sky-100 text-sky-800 border border-sky-200'
+                        }`}
+                      >
+                        {u.role === 'ADMIN_SISTEMA' ? 'ADMIN SISTEMA' : u.role}
                       </span>
                     </button>
                   ))}
