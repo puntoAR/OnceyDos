@@ -100,15 +100,21 @@ export default function PublicQuotePage() {
         {/* Encabezado Oficial */}
         <div className="bg-slate-900 text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
-              11&bull;2
+            <div className="relative w-16 h-12 rounded-xl bg-white p-1 border border-slate-700 shadow-lg shrink-0 overflow-hidden flex items-center justify-center">
+              <Image
+                src="/images/logo-11y2.png"
+                alt="Logo Ferretería 11 y 2 Electricidad"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                Ferretería Once y Dos
+                Ferretería 11 y 2
               </h1>
               <p className="text-xs text-amber-400 font-semibold">
-                Materiales, Reparaciones & Obras a Domicilio
+                Electricidad &bull; Materiales &bull; Obras a Domicilio
               </p>
             </div>
           </div>

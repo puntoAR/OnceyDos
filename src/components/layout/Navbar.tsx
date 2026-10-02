@@ -60,15 +60,21 @@ export function Navbar({ onToggleSidebar }: Props) {
             </button>
 
             <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
-                11&bull;2
+              <div className="relative w-12 h-10 rounded-xl overflow-hidden bg-white border border-slate-200/90 shadow-xs flex items-center justify-center group-hover:scale-105 transition-transform p-0.5">
+                <Image
+                  src="/images/logo-11y2.png"
+                  alt="Logo Ferretería 11 y 2"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div>
                 <span className="font-black text-slate-900 text-base sm:text-lg tracking-tight block leading-none">
-                  Once y Dos
+                  Ferretería 11 y 2
                 </span>
-                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider block">
-                  Ferretería &bull; Gestión Integral
+                <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider block">
+                  Electricidad &bull; Gestión Integral
                 </span>
               </div>
             </Link>

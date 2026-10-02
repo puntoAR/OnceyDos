@@ -91,13 +91,18 @@ export function Sidebar({ isOpen, onClose }: Props) {
         {/* Cabecera del sidebar */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center shadow-lg shadow-amber-500/20">
-              11&bull;2
+            <div className="relative w-11 h-9 rounded-lg overflow-hidden bg-white border border-slate-700 flex items-center justify-center shadow-lg p-0.5">
+              <Image
+                src="/images/logo-11y2.png"
+                alt="Logo Ferretería 11 y 2"
+                fill
+                className="object-contain"
+              />
             </div>
             <div>
-              <h2 className="font-bold text-white text-sm tracking-tight">Once y Dos</h2>
+              <h2 className="font-bold text-white text-sm tracking-tight">Ferretería 11 y 2</h2>
               <span className="text-[10px] text-amber-400 font-semibold uppercase tracking-wider block">
-                Ferretería &bull; Gestión
+                Electricidad &bull; Gestión
               </span>
             </div>
           </div>

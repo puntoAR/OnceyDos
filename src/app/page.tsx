@@ -90,16 +90,25 @@ export default function DashboardPage() {
         <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30 mb-3">
-              <span>Puesto Activo: {user.name} ({user.role})</span>
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-14 rounded-2xl bg-white p-1 border border-slate-700 shadow-xl shrink-0 overflow-hidden hidden sm:flex items-center justify-center">
+              <img
+                src="/images/logo-11y2.png"
+                alt="Logo Ferretería 11 y 2"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Panel Operativo Once y Dos
-            </h1>
-            <p className="text-slate-300 text-sm mt-1 max-w-xl">
-              Sistema integral de control de inventario de ferretería, ventas de mostrador, presupuestos móviles y gestión bancaria con evidencia obligatoria.
-            </p>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30 mb-2">
+                <span>Puesto Activo: {user.name} ({user.role})</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Ferretería 11 y 2 &bull; Panel Operativo
+              </h1>
+              <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
+                Sistema integral de control de stock (10k insumos), venta mostrador, presupuestos in situ y órdenes de trabajo.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

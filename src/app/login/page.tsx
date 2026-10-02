@@ -50,58 +50,64 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-slate-100">
-      {/* Fondo con imagen de taller moderno y ferretería de precisión Once y Dos */}
+      {/* Fondo con fotografía real de la fachada de Ferretería Once y Dos (Ituzaingó y Bv. López de Armenia) */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.png"
-          alt="Ferretería Once y Dos - Salón & Taller Moderno"
+          alt="Fachada Ferretería 11 y 2 Electricidad"
           fill
-          className="object-cover opacity-90"
+          className="object-cover"
           priority
         />
-        {/* Overlay degradado para asegurar máxima legibilidad y calidez */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/80 via-white/60 to-slate-900/10 backdrop-blur-[0.5px]" />
+        {/* Overlay con degradado para garantizar contraste y visibilidad del local */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/80 via-slate-900/50 to-slate-950/70 backdrop-blur-[0.5px]" />
       </div>
 
-      {/* Pilares decorativos laterales (como en la referencia) */}
-      <div className="hidden lg:flex flex-col space-y-2 absolute top-1/3 left-16 z-10 text-xs font-semibold tracking-widest text-slate-500 uppercase">
+      {/* Pilares decorativos laterales */}
+      <div className="hidden lg:flex flex-col space-y-2 absolute top-1/3 left-16 z-10 text-xs font-bold tracking-widest text-white/90 drop-shadow-md uppercase">
         <span>PRODUCTOS</span>
         <span>INVENTARIO</span>
         <span>SERVICIOS</span>
-        <div className="w-8 h-0.5 bg-amber-500 mt-2"></div>
+        <div className="w-8 h-0.5 bg-amber-400 mt-2 shadow-xs"></div>
       </div>
 
-      <div className="hidden lg:flex flex-col space-y-2 absolute top-1/3 right-16 z-10 text-xs font-semibold tracking-widest text-slate-500 uppercase text-right">
+      <div className="hidden lg:flex flex-col space-y-2 absolute top-1/3 right-16 z-10 text-xs font-bold tracking-widest text-white/90 drop-shadow-md uppercase text-right">
         <span>ORGANIZACIÓN</span>
         <span>EFICIENCIA</span>
         <span>RESULTADOS</span>
-        <div className="w-8 h-0.5 bg-amber-500 mt-2 self-end"></div>
+        <div className="w-8 h-0.5 bg-amber-400 mt-2 self-end shadow-xs"></div>
       </div>
 
-      {/* Slogan en cursiva esquina inferior izquierda (como en la referencia) */}
+      {/* Slogan en cursiva esquina inferior izquierda */}
       <div className="hidden md:block absolute bottom-12 left-16 z-10">
-        <p className="font-serif italic text-2xl lg:text-3xl text-slate-600/80 tracking-wide">
+        <p className="font-serif italic text-2xl lg:text-3xl text-white/95 drop-shadow-lg tracking-wide">
           El valor de gestionar <br />
-          <span className="font-sans font-semibold text-slate-700">con precisión</span>
+          <span className="font-sans font-bold text-amber-400">con precisión</span>
         </p>
       </div>
 
       {/* Tarjeta Central de Ingreso */}
       <div className="relative z-20 w-full max-w-[440px] mx-4 bg-white/95 backdrop-blur-xl rounded-3xl p-8 sm:p-10 shadow-2xl border border-white/80 animate-in fade-in zoom-in-95 duration-300">
-        {/* Cabecera del formulario */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500 text-slate-950 font-black text-2xl shadow-lg shadow-amber-500/25 mb-3">
-            11&bull;2
+        {/* Cabecera del formulario con Logo Oficial de Ferretería 11 y 2 */}
+        <div className="text-center mb-6">
+          <div className="relative w-40 h-24 mx-auto mb-2 drop-shadow-sm">
+            <Image
+              src="/images/logo-11y2.png"
+              alt="Logo Ferretería 11 y 2 Electricidad"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Once<span className="text-amber-500">y</span>Dos
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Ferretería <span className="text-red-600">11</span> y <span className="text-amber-500">2</span>
           </h1>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-            FERRETERÍA &bull; STOCK &bull; SERVICIOS
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+            ELECTRICIDAD &bull; STOCK &bull; SERVICIOS
           </p>
-          <div className="w-12 h-1 bg-amber-500 mx-auto rounded-full mt-3"></div>
-          <h2 className="text-sm font-semibold text-slate-700 mt-4">
-            Ingreso al sistema
+          <div className="w-12 h-1 bg-amber-500 mx-auto rounded-full mt-2.5"></div>
+          <h2 className="text-xs font-semibold text-slate-600 mt-3">
+            Ingreso al sistema de gestión
           </h2>
         </div>
 

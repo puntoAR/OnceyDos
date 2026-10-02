@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Download,
   Smartphone,
@@ -110,8 +111,13 @@ export function InstallAppFloating() {
             </button>
 
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/25">
-                11&bull;2
+              <div className="relative w-12 h-10 rounded-xl bg-white p-0.5 border border-slate-700 shrink-0 shadow-lg shadow-amber-500/10 overflow-hidden flex items-center justify-center">
+                <Image
+                  src="/images/logo-11y2.png"
+                  alt="Logo Ferretería 11 y 2"
+                  fill
+                  className="object-contain"
+                />
               </div>
               <div className="pr-6">
                 <div className="flex items-center gap-1.5">
@@ -158,8 +164,13 @@ export function InstallAppFloating() {
           className="fixed bottom-4 right-4 z-40 py-2 px-3 rounded-full bg-slate-900/90 hover:bg-slate-900 text-white border border-amber-500/40 shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-bold transition-all transform hover:scale-105 active:scale-95 group"
           title="Instalar aplicación en PC o celular"
         >
-          <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black flex items-center justify-center text-[10px]">
-            11&bull;2
+          <div className="relative w-6 h-5 rounded overflow-hidden bg-white shrink-0">
+            <Image
+              src="/images/logo-11y2.png"
+              alt="11 y 2"
+              fill
+              className="object-contain"
+            />
           </div>
           <span className="text-[11px] text-slate-200 group-hover:text-amber-400 transition-colors">
             Instalar App
@@ -181,12 +192,17 @@ export function InstallAppFloating() {
             {/* Cabecera del modal */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-sm shadow-md shadow-amber-500/25">
-                  11&bull;2
+                <div className="relative w-14 h-11 rounded-xl bg-white p-0.5 border border-slate-200 shadow-md shrink-0 overflow-hidden flex items-center justify-center">
+                  <Image
+                    src="/images/logo-11y2.png"
+                    alt="Logo Ferretería 11 y 2"
+                    fill
+                    className="object-contain"
+                  />
                 </div>
                 <div>
                   <h3 className="font-black text-slate-900 text-sm sm:text-base leading-tight">
-                    Cómo Instalar Once y Dos
+                    Cómo Instalar Ferretería 11 y 2
                   </h3>
                   <span className="text-[11px] text-slate-500 font-medium">
                     Disponible para PC, Android y iPhone
