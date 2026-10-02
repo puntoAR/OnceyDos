@@ -18,11 +18,13 @@ import {
   Barcode,
   Layers,
   Sparkles,
+  ShieldCheck,
+  Zap,
 } from 'lucide-react';
 import { getProducts, saveProduct, deleteProduct, getSuppliers } from '@/lib/store';
 import { Product, Supplier } from '@/types';
 import { ImageUploader } from '@/components/media/ImageUploader';
-import { getProductPlaceholderSvg } from '@/lib/media';
+import { getProductPlaceholderSvg, formatBytes, getDataUrlSizeBytes } from '@/lib/media';
 
 export default function StockPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -502,6 +504,15 @@ export default function StockPage() {
                   label="Fotografías del Insumo / Repuesto"
                   allowCamera={true}
                 />
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-[11px] text-slate-500">
+                  <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Compresión automática para Vercel activa</span>
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-400">
+                    Límite Serverless: 4.5 MB &bull; Salida WebP: &lt;1 MB
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -778,8 +789,15 @@ export default function StockPage() {
           onClick={() => setPreviewImage(null)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 cursor-pointer"
         >
-          <div className="relative max-w-xl max-h-[85vh] bg-white rounded-2xl overflow-hidden p-2">
-            <img src={previewImage} alt="Foto de Insumo" className="max-h-[80vh] w-auto object-contain mx-auto rounded-xl" />
+          <div className="relative max-w-xl max-h-[85vh] bg-white rounded-2xl overflow-hidden p-4 space-y-2">
+            <img src={previewImage} alt="Foto de Insumo" className="max-h-[75vh] w-auto object-contain mx-auto rounded-xl" />
+            <div className="flex items-center justify-between text-xs text-slate-600 px-1 pt-2 border-t border-slate-100">
+              <span className="font-semibold text-slate-800">Fotografía de Insumo</span>
+              <span className="font-mono text-emerald-700 font-bold flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Peso optimizado: {formatBytes(getDataUrlSizeBytes(previewImage))} (Apta para Vercel)</span>
+              </span>
+            </div>
           </div>
         </div>
       )}
