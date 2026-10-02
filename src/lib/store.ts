@@ -18,6 +18,7 @@ import {
   RolePermissions,
   UserRole,
   PaymentMethodType,
+  SupplierPurchase,
 } from '@/types';
 import {
   INITIAL_USERS,
@@ -30,6 +31,8 @@ import {
   INITIAL_QUOTES,
   INITIAL_WORK_ORDERS,
   DEFAULT_ROLE_PERMISSIONS,
+  INITIAL_SALES,
+  INITIAL_PURCHASES,
 } from './seed/data';
 
 const STORAGE_KEYS = {
@@ -39,6 +42,7 @@ const STORAGE_KEYS = {
   SUPPLIERS: 'onceydos_suppliers',
   CLIENTS: 'onceydos_clients',
   SALES: 'onceydos_sales',
+  PURCHASES: 'onceydos_purchases',
   QUOTES: 'onceydos_quotes',
   WORK_ORDERS: 'onceydos_work_orders',
   OBLIGATIONS: 'onceydos_obligations',
@@ -109,6 +113,12 @@ export function initStore(): void {
   }
   if (!localStorage.getItem(STORAGE_KEYS.WORK_ORDERS)) {
     safeSet(STORAGE_KEYS.WORK_ORDERS, INITIAL_WORK_ORDERS);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.SALES)) {
+    safeSet(STORAGE_KEYS.SALES, INITIAL_SALES);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.PURCHASES)) {
+    safeSet(STORAGE_KEYS.PURCHASES, INITIAL_PURCHASES);
   }
   if (!localStorage.getItem(STORAGE_KEYS.DEV_MESSAGES)) {
     safeSet(STORAGE_KEYS.DEV_MESSAGES, [
@@ -346,7 +356,7 @@ export function deleteProduct(id: string): void {
 
 // --- VENTAS (POS) ---
 export function getSales(): Sale[] {
-  return safeGet<Sale[]>(STORAGE_KEYS.SALES, []);
+  return safeGet<Sale[]>(STORAGE_KEYS.SALES, INITIAL_SALES);
 }
 
 export function registerSale(sale: Omit<Sale, 'id' | 'receiptNumber' | 'date' | 'status'>): Sale {
@@ -405,6 +415,45 @@ export function registerSale(sale: Omit<Sale, 'id' | 'receiptNumber' | 'date' | 
   });
 
   return newSale;
+}
+
+// --- COMPRAS A PROVEEDORES (EGRESOS) ---
+export function getPurchases(): SupplierPurchase[] {
+  return safeGet<SupplierPurchase[]>(STORAGE_KEYS.PURCHASES, INITIAL_PURCHASES);
+}
+
+export function savePurchase(purchase: SupplierPurchase): void {
+  const purchases = getPurchases();
+  const index = purchases.findIndex((p) => p.id === purchase.id);
+  if (index >= 0) {
+    purchases[index] = purchase;
+    addAuditLog({
+      action: 'MODIFICAR_COMPRA',
+      details: `Factura de compra modificada: ${purchase.purchaseNumber} de ${purchase.supplierName} por $${purchase.total.toLocaleString('es-AR')}`,
+      category: 'FINANZAS',
+    });
+  } else {
+    purchases.unshift(purchase);
+    addAuditLog({
+      action: 'REGISTRAR_COMPRA',
+      details: `Nueva compra a proveedor registrada: ${purchase.supplierName} por $${purchase.total.toLocaleString('es-AR')} (Comprobante: ${purchase.purchaseNumber})`,
+      category: 'FINANZAS',
+    });
+  }
+  safeSet(STORAGE_KEYS.PURCHASES, purchases);
+}
+
+export function deletePurchase(id: string): void {
+  const purchases = getPurchases();
+  const target = purchases.find((p) => p.id === id);
+  if (!target) return;
+  const filtered = purchases.filter((p) => p.id !== id);
+  safeSet(STORAGE_KEYS.PURCHASES, filtered);
+  addAuditLog({
+    action: 'ELIMINAR_COMPRA',
+    details: `Factura de compra eliminada: ${target.purchaseNumber} de ${target.supplierName}`,
+    category: 'FINANZAS',
+  });
 }
 
 // --- PRESUPUESTOS Y ÓRDENES DE TRABAJO ---

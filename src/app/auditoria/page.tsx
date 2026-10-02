@@ -52,6 +52,7 @@ const MODULE_DEFINITIONS: { id: AppModule; name: string; description: string; sy
   { id: 'PRESUPUESTOS', name: 'Presupuestos In Situ', description: 'Cotizaciones en obra con fotos y envío WhatsApp/Email' },
   { id: 'ORDENES_TRABAJO', name: 'Órdenes de Trabajo', description: 'Gestión de servicios, estado de tareas y facturación' },
   { id: 'FINANZAS', name: 'Finanzas & Cheques', description: 'Control de cuentas bancarias y obligaciones financieras' },
+  { id: 'BALANCE', name: 'Balance & Flujo de Caja', description: 'Consolidación de ingresos (ventas discriminadas) y egresos (compras a proveedores)' },
   { id: 'ALERTAS', name: 'Alertas de Transacción', description: 'Notificaciones obligatorias con respaldo fotográfico' },
   { id: 'LICENCIAS', name: 'Licencias & Activación', description: 'Claves de licencia y estado de validez (Solo Admin Sistema)', systemAdminOnly: true },
   { id: 'AUDITORIA', name: 'Auditoría & Diagnóstico', description: 'Logs inalterables, depuración y control de permisos (Solo Admin Sistema)', systemAdminOnly: true },

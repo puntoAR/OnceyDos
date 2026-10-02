@@ -7,6 +7,7 @@ export type AppModule =
   | 'PRESUPUESTOS'
   | 'ORDENES_TRABAJO'
   | 'FINANZAS'
+  | 'BALANCE'
   | 'ALERTAS'
   | 'LICENCIAS'
   | 'AUDITORIA'
@@ -116,6 +117,33 @@ export interface Sale {
   total: number;
   payments: PaymentEntry[];
   status: 'COMPLETED' | 'CANCELLED';
+}
+
+export interface PurchaseItem {
+  id: string;
+  productId?: string;
+  code?: string;
+  description: string;
+  quantity: number;
+  unitCost: number;
+  subtotal: number;
+}
+
+export interface SupplierPurchase {
+  id: string;
+  purchaseNumber: string; // "FC-A-0004-00012845" o "RE-0001-00004512"
+  supplierId: string;
+  supplierName: string;
+  supplierCuit?: string;
+  date: string; // ISO date string
+  paymentMethod: 'EFECTIVO' | 'CHEQUE' | 'TRANSFERENCIA' | 'CUENTA_CORRIENTE';
+  items: PurchaseItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'PAGADA' | 'PENDIENTE' | 'ANULADA';
+  notes?: string;
+  receiptUrl?: string;
 }
 
 export interface QuotePhoto {

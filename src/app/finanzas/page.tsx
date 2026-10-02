@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Landmark,
   Plus,
@@ -17,6 +18,7 @@ import {
   Phone,
   Mail,
   FileCheck,
+  Scale,
 } from 'lucide-react';
 import {
   getObligations,
@@ -122,6 +124,29 @@ export default function FinanzasPage() {
           <Plus className="w-4 h-4" />
           <span>Registrar Cheque / Obligación</span>
         </button>
+      </div>
+
+      {/* Banner de Acceso a Balance Consolidado */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-50 to-blue-500/10 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <Scale className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-xs text-slate-900">
+              ¿Deseas consultar el Balance Consolidado de Ingresos vs. Egresos?
+            </h4>
+            <p className="text-[11px] text-slate-500">
+              Analiza ventas por medio de pago (efectivo, cheques, cta cte, tarjetas) y compras a proveedores filtrando mensualmente.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/balance"
+          className="py-2 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shrink-0 shadow-xs"
+        >
+          <span>Ir a Balance & Flujo de Caja &rarr;</span>
+        </Link>
       </div>
 
       {/* Tarjetas de Resumen Financiero */}

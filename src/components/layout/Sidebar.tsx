@@ -16,6 +16,7 @@ import {
   FileText,
   X,
   ShieldCheck,
+  Scale,
 } from 'lucide-react';
 import { getCurrentUser, getNotifications, canUserAccessModule } from '@/lib/store';
 import { User, AppModule } from '@/types';
@@ -58,6 +59,7 @@ export function Sidebar({ isOpen, onClose }: Props) {
     { label: 'Presupuestos In Situ', href: '/presupuestos', icon: Smartphone, module: 'PRESUPUESTOS' },
     { label: 'Órdenes de Trabajo', href: '/ordenes-trabajo', icon: Wrench, module: 'ORDENES_TRABAJO' },
     { label: 'Finanzas & Cheques', href: '/finanzas', icon: Landmark, module: 'FINANZAS' },
+    { label: 'Balance & Flujo de Caja', href: '/balance', icon: Scale, module: 'BALANCE' },
     {
       label: 'Alertas de Transacción',
       href: '/alertas',
