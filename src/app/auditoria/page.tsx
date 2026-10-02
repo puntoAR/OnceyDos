@@ -21,6 +21,13 @@ import {
   Check,
   Info,
   ShieldAlert,
+  UserPlus,
+  Edit2,
+  Trash2,
+  UserCheck,
+  X,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import {
   getAuditLogs,
@@ -32,6 +39,9 @@ import {
   resetRolePermissions,
   getUsers,
   getCurrentUser,
+  saveUser,
+  deleteUser,
+  setCurrentUser,
 } from '@/lib/store';
 import { AuditLogEntry, SystemErrorLog, RolePermissions, AppModule, UserRole, User } from '@/types';
 
@@ -48,7 +58,7 @@ const MODULE_DEFINITIONS: { id: AppModule; name: string; description: string; sy
 ];
 
 export default function AuditoriaPage() {
-  const [tab, setTab] = useState<'AUDITORIA' | 'ERRORES' | 'PERMISOS'>('AUDITORIA');
+  const [tab, setTab] = useState<'AUDITORIA' | 'USUARIOS' | 'PERMISOS' | 'ERRORES'>('AUDITORIA');
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [errorLogs, setErrorLogs] = useState<SystemErrorLog[]>([]);
   const [rolePermissions, setRolePermissions] = useState<RolePermissions[]>([]);
@@ -58,6 +68,23 @@ export default function AuditoriaPage() {
   const [categoryFilter, setCategoryFilter] = useState('TODAS');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+
+  // Estado para gestión y Alta de Usuarios
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('TODOS');
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userForm, setUserForm] = useState({
+    name: '',
+    username: '',
+    email: '',
+    phone: '',
+    role: 'CAJERO' as UserRole,
+    hasCustomPermissions: false,
+    customModules: ['POS'] as AppModule[],
+    isActive: true,
+  });
+  const [userFormError, setUserFormError] = useState('');
 
   const loadData = () => {
     setAuditLogs(getAuditLogs());
@@ -69,6 +96,14 @@ export default function AuditoriaPage() {
 
   useEffect(() => {
     loadData();
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'usuarios') setTab('USUARIOS');
+      else if (tabParam === 'permisos') setTab('PERMISOS');
+      else if (tabParam === 'errores') setTab('ERRORES');
+      else if (tabParam === 'auditoria') setTab('AUDITORIA');
+    }
     window.addEventListener('onceydos_storage_update', loadData);
     return () => window.removeEventListener('onceydos_storage_update', loadData);
   }, []);
@@ -157,6 +192,133 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
     }
   };
 
+  // --- GESTIÓN Y ALTA DE USUARIOS ---
+  const openCreateUserModal = () => {
+    setEditingUser(null);
+    setUserForm({
+      name: '',
+      username: '',
+      email: '',
+      phone: '',
+      role: 'CAJERO',
+      hasCustomPermissions: false,
+      customModules: ['POS'],
+      isActive: true,
+    });
+    setUserFormError('');
+    setIsUserModalOpen(true);
+  };
+
+  const openEditUserModal = (u: User) => {
+    setEditingUser(u);
+    const hasCustom = !!(u.customModules && u.customModules.length > 0);
+    setUserForm({
+      name: u.name,
+      username: u.username,
+      email: u.email,
+      phone: u.phone || '',
+      role: u.role,
+      hasCustomPermissions: hasCustom,
+      customModules: hasCustom ? [...(u.customModules || [])] : ['STOCK', 'POS'],
+      isActive: u.isActive !== undefined ? u.isActive : true,
+    });
+    setUserFormError('');
+    setIsUserModalOpen(true);
+  };
+
+  const handleToggleUserModule = (modId: AppModule) => {
+    if (modId === 'LICENCIAS' || modId === 'AUDITORIA') return; // Bloqueado por diseño
+    setUserForm((prev) => {
+      const exists = prev.customModules.includes(modId);
+      const next = exists
+        ? prev.customModules.filter((m) => m !== modId)
+        : [...prev.customModules, modId];
+      return { ...prev, customModules: next };
+    });
+  };
+
+  const handleSaveUserSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUserFormError('');
+
+    if (!userForm.name.trim()) {
+      setUserFormError('El nombre completo es obligatorio.');
+      return;
+    }
+    if (!userForm.username.trim()) {
+      setUserFormError('El nombre de usuario para inicio de sesión es obligatorio.');
+      return;
+    }
+    if (!userForm.email.trim()) {
+      setUserFormError('El correo electrónico es obligatorio.');
+      return;
+    }
+
+    const cleanUsername = userForm.username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+    const exists = allUsers.some(
+      (u) => u.username.toLowerCase() === cleanUsername && (!editingUser || u.id !== editingUser.id)
+    );
+    if (exists) {
+      setUserFormError(`El nombre de usuario "${cleanUsername}" ya se encuentra registrado.`);
+      return;
+    }
+
+    try {
+      saveUser({
+        id: editingUser?.id,
+        name: userForm.name,
+        username: cleanUsername,
+        email: userForm.email,
+        phone: userForm.phone,
+        role: userForm.role,
+        isActive: userForm.isActive,
+        customModules: userForm.hasCustomPermissions ? userForm.customModules : undefined,
+      });
+
+      loadData();
+      setIsUserModalOpen(false);
+    } catch (err: any) {
+      setUserFormError(err.message || 'Error al guardar usuario');
+    }
+  };
+
+  const handleDeleteUserClick = (u: User) => {
+    if (u.id === currentUser?.id) {
+      alert('No puedes eliminar tu propia cuenta en uso activo.');
+      return;
+    }
+    if (u.role === 'ADMIN_SISTEMA') {
+      alert('Por directiva de seguridad no es posible eliminar a un Administrador del Sistema.');
+      return;
+    }
+
+    if (confirm(`¿Está seguro de que desea dar de baja al usuario "${u.name}" (@${u.username})?`)) {
+      const res = deleteUser(u.id);
+      if (!res.success) {
+        alert(res.message);
+      } else {
+        loadData();
+      }
+    }
+  };
+
+  const handleSwitchUserSession = (u: User) => {
+    setCurrentUser(u);
+    loadData();
+    alert(`Sesión cambiada a: ${u.name} (${u.role})`);
+  };
+
+  const filteredUsers = allUsers.filter((u) => {
+    const matchRole = userRoleFilter === 'TODOS' || u.role === userRoleFilter;
+    const matchSearch =
+      !userSearch ||
+      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+      (u.phone && u.phone.includes(userSearch));
+    return matchRole && matchSearch;
+  });
+
   return (
     <div className="space-y-6">
       {/* Cabecera */}
@@ -186,23 +348,23 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
           onClick={() => setTab('AUDITORIA')}
           className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
             tab === 'AUDITORIA'
-              ? 'border-amber-500 text-amber-600'
+              ? 'border-amber-500 text-amber-600 bg-amber-50/50 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Log de Auditoría General ({auditLogs.length})</span>
+          <span>Log de Auditoría ({auditLogs.length})</span>
         </button>
         <button
-          onClick={() => setTab('ERRORES')}
+          onClick={() => setTab('USUARIOS')}
           className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
-            tab === 'ERRORES'
-              ? 'border-red-500 text-red-600'
+            tab === 'USUARIOS'
+              ? 'border-amber-500 text-amber-600 bg-amber-50/60 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Bug className="w-4 h-4" />
-          <span>Capturador de Errores & Líneas ({errorLogs.length})</span>
+          <Users className="w-4 h-4 text-amber-500" />
+          <span>Gestión & Alta de Usuarios ({allUsers.length})</span>
         </button>
         <button
           onClick={() => setTab('PERMISOS')}
@@ -213,7 +375,18 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
           }`}
         >
           <Shield className="w-4 h-4 text-purple-600" />
-          <span>Niveles de Acceso & Permisos (RBAC)</span>
+          <span>Matriz de Roles Estándar (RBAC)</span>
+        </button>
+        <button
+          onClick={() => setTab('ERRORES')}
+          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+            tab === 'ERRORES'
+              ? 'border-red-500 text-red-600 bg-red-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Bug className="w-4 h-4" />
+          <span>Capturador de Errores ({errorLogs.length})</span>
         </button>
       </div>
 
@@ -387,6 +560,216 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Gestión y Alta de Usuarios */}
+      {tab === 'USUARIOS' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Header con botón de Alta de Usuario */}
+          <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-50 via-slate-50 to-purple-50 border border-amber-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-black text-slate-900 text-base">
+                  Directorio & Alta de Usuarios del Sistema
+                </h4>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Cree usuarios personalizados (no solo genéricos) con sus credenciales de acceso y asigne permisos a medida por módulo o basados en su rol.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={openCreateUserModal}
+              className="py-2.5 px-5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all shrink-0"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Alta de Nuevo Usuario</span>
+            </button>
+          </div>
+
+          {/* Buscador y Filtro de Usuarios */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-soft-card flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, usuario (@login), email o teléfono..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:bg-white outline-hidden transition-all"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+              <select
+                value={userRoleFilter}
+                onChange={(e) => setUserRoleFilter(e.target.value)}
+                className="w-full sm:w-auto py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-hidden"
+              >
+                <option value="TODOS">Todos los Roles ({allUsers.length})</option>
+                <option value="ADMIN_SISTEMA">Admin Sistema</option>
+                <option value="ADMIN">Administrador</option>
+                <option value="TECNICO">Técnico Obra</option>
+                <option value="CAJERO">Cajero / Mostrador</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Grilla de Usuarios */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredUsers.length === 0 ? (
+              <div className="col-span-full p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs">
+                No se encontraron usuarios coincidentes con el criterio de búsqueda.
+              </div>
+            ) : (
+              filteredUsers.map((u) => {
+                const isCurrent = currentUser?.id === u.id;
+                const hasCustomPerms = u.customModules && u.customModules.length > 0;
+
+                return (
+                  <div
+                    key={u.id}
+                    className={`bg-white rounded-2xl p-5 border shadow-soft-card flex flex-col justify-between transition-all hover:border-amber-300 ${
+                      isCurrent ? 'ring-2 ring-amber-400/50 border-amber-300' : 'border-slate-200/80'
+                    }`}
+                  >
+                    <div>
+                      {/* Cabecera de la tarjeta */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
+                              u.role === 'ADMIN_SISTEMA'
+                                ? 'bg-purple-100 text-purple-800'
+                                : u.role === 'ADMIN'
+                                ? 'bg-amber-100 text-amber-800'
+                                : u.role === 'TECNICO'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-sky-100 text-sky-800'
+                            }`}
+                          >
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm text-slate-900 leading-tight flex items-center gap-1.5">
+                              <span>{u.name}</span>
+                              {isCurrent && (
+                                <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-md">
+                                  Tú
+                                </span>
+                              )}
+                            </h3>
+                            <span className="font-mono text-xs text-slate-400 block mt-0.5">
+                              @{u.username}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 ${
+                            u.role === 'ADMIN_SISTEMA'
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : u.role === 'ADMIN'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : u.role === 'TECNICO'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : 'bg-sky-100 text-sky-800 border border-sky-200'
+                          }`}
+                        >
+                          {u.role === 'ADMIN_SISTEMA' ? 'ADMIN SISTEMA' : u.role}
+                        </span>
+                      </div>
+
+                      {/* Datos de contacto */}
+                      <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 mb-3">
+                        <div className="flex items-center gap-2 text-slate-600 truncate">
+                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{u.email}</span>
+                        </div>
+                        {u.phone && (
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{u.phone}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Estado de Permisos */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            Régimen de Permisos:
+                          </span>
+                          {hasCustomPerms ? (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              Personalizado ({u.customModules?.length} módulos)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                              Hereda de Rol
+                            </span>
+                          )}
+                        </div>
+
+                        {hasCustomPerms ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {u.customModules?.map((m) => (
+                              <span
+                                key={m}
+                                className="text-[9px] font-bold bg-amber-100/70 text-amber-900 px-2 py-0.5 rounded-md"
+                              >
+                                {m}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-slate-500 italic">
+                            Accede a los módulos autorizados en la matriz para {u.role}.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Acciones de la tarjeta */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => openEditUserModal(u)}
+                        className="flex-1 py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Editar / Permisos</span>
+                      </button>
+
+                      {!isCurrent && (
+                        <button
+                          onClick={() => handleSwitchUserSession(u)}
+                          className="py-1.5 px-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-semibold text-xs transition-colors"
+                          title="Iniciar sesión rápida como este usuario"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {!isCurrent && u.role !== 'ADMIN_SISTEMA' && (
+                        <button
+                          onClick={() => handleDeleteUserClick(u)}
+                          className="py-1.5 px-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                          title="Dar de baja usuario"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -598,7 +981,16 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
                   Usuarios del Sistema y Asignación de Roles
                 </h3>
               </div>
-              <span className="text-xs text-slate-400">Total: {allUsers.length} usuarios</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Total: {allUsers.length} usuarios</span>
+                <button
+                  onClick={openCreateUserModal}
+                  className="py-1 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Alta de Usuario</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -636,6 +1028,226 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Alta / Edición de Usuario */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden max-h-[92vh] flex flex-col">
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    {editingUser ? `Editar Usuario: ${editingUser.name}` : 'Alta de Nuevo Usuario'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {editingUser
+                      ? 'Modifique datos de contacto, rol y permisos específicos.'
+                      : 'Cree una cuenta para un empleado y defina sus permisos de acceso.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsUserModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUserSubmit} className="p-6 space-y-4 overflow-y-auto">
+              {userFormError && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                  {userFormError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nombre Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Juan Pérez"
+                    value={userForm.name}
+                    onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:bg-white outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Usuario Login * (@usuario)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. jperez"
+                    value={userForm.username}
+                    onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:bg-white outline-hidden font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Correo Electrónico *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="juan@onceydos.com.ar"
+                    value={userForm.email}
+                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:bg-white outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Teléfono / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="+54 9 11 4455-6677"
+                    value={userForm.phone}
+                    onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:bg-white outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Puesto / Rol Asignado
+                </label>
+                <select
+                  value={userForm.role}
+                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-hidden"
+                >
+                  <option value="CAJERO">Cajero / Atención Mostrador</option>
+                  <option value="TECNICO">Técnico de Obra & Presupuestos</option>
+                  <option value="ADMIN">Administrador / Encargado de Sucursal</option>
+                  <option value="ADMIN_SISTEMA">Administrador del Sistema (Acceso Total)</option>
+                </select>
+              </div>
+
+              {/* Selector de modo de permisos: Genérico o Personalizado */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900">
+                    Régimen de Permisos de Acceso:
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-amber-400 transition-colors">
+                    <input
+                      type="radio"
+                      name="perm_mode"
+                      checked={!userForm.hasCustomPermissions}
+                      onChange={() => setUserForm({ ...userForm, hasCustomPermissions: false })}
+                      className="mt-0.5 text-amber-500 focus:ring-amber-400"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-slate-800 block">
+                        Permisos por defecto del Rol (Genérico)
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Hereda automáticamente la matriz de accesos configurada para {userForm.role}.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-amber-400 transition-colors">
+                    <input
+                      type="radio"
+                      name="perm_mode"
+                      checked={userForm.hasCustomPermissions}
+                      onChange={() => setUserForm({ ...userForm, hasCustomPermissions: true })}
+                      className="mt-0.5 text-amber-500 focus:ring-amber-400"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-amber-900 block">
+                        Asignar permisos individuales a medida (No genérico)
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Definir de forma personalizada a qué módulos específicos tiene acceso este usuario.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {userForm.hasCustomPermissions && (
+                  <div className="pt-2 border-t border-slate-200/80 space-y-1.5 animate-in fade-in duration-150">
+                    <span className="text-[11px] font-bold text-slate-600 block mb-1">
+                      Módulos Habilitados para este Usuario:
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {MODULE_DEFINITIONS.filter((m) => !m.systemAdminOnly).map((m) => {
+                        const isChecked = userForm.customModules.includes(m.id);
+                        return (
+                          <label
+                            key={m.id}
+                            className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
+                              isChecked
+                                ? 'bg-amber-50 border-amber-300 text-amber-950 font-bold'
+                                : 'bg-white border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleUserModule(m.id)}
+                              className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                            />
+                            <span className="truncate">{m.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={userForm.isActive}
+                    onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })}
+                    className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span>Usuario Activo en el Sistema</span>
+                </label>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUserModalOpen(false)}
+                  className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="py-2.5 px-5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 transition-all"
+                >
+                  {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

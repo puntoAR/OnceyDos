@@ -25,7 +25,11 @@ export interface User {
   name: string;
   role: UserRole;
   email: string;
+  phone?: string;
   avatar?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  customModules?: AppModule[]; // Permisos individuales específicos por usuario (no genéricos)
 }
 
 export interface Product {
@@ -132,7 +136,13 @@ export interface QuoteItem {
   subtotal: number;
 }
 
-export type QuoteStatus = 'BORRADOR' | 'ENVIADO' | 'ACEPTADO' | 'RECHAZADO';
+export type QuoteStatus =
+  | 'BORRADOR'
+  | 'PENDIENTE_APROBACION'
+  | 'APROBADO_ADMIN'
+  | 'ENVIADO'
+  | 'ACEPTADO'
+  | 'RECHAZADO';
 
 export interface Quote {
   id: string;
@@ -154,9 +164,18 @@ export interface Quote {
   validityDays: number;
   status: QuoteStatus;
   workOrderId?: string;
+  adminApprovedAt?: string;
+  adminApprovedByName?: string;
+  clientApprovedAt?: string;
 }
 
-export type WorkOrderStatus = 'PENDIENTE' | 'EN_PROCESO' | 'ESPERA_REPUESTOS' | 'FINALIZADA' | 'COBRADA';
+export type WorkOrderStatus =
+  | 'PENDIENTE'
+  | 'EN_PROCESO'
+  | 'ESPERA_REPUESTOS'
+  | 'FINALIZADA_USUARIO'
+  | 'FINALIZADA'
+  | 'COBRADA';
 
 export interface WorkOrder {
   id: string;
@@ -177,6 +196,11 @@ export interface WorkOrder {
   remainingBalance: number;
   photos: QuotePhoto[];
   completionNotes?: string;
+  userCompletedAt?: string;
+  userCompletedByName?: string;
+  adminApprovedAt?: string;
+  adminApprovedByName?: string;
+  invoiceReceiptNumber?: string;
   createdAt: string;
   completedAt?: string;
 }

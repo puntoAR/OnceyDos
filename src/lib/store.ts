@@ -17,6 +17,7 @@ import {
   AppModule,
   RolePermissions,
   UserRole,
+  PaymentMethodType,
 } from '@/types';
 import {
   INITIAL_USERS,
@@ -153,12 +154,18 @@ export function resetRolePermissions(): void {
 
 export function canUserAccessModule(user: User | null, module: AppModule): boolean {
   if (!user) return false;
+  if (user.isActive === false) return false;
   // Administrador del sistema siempre tiene acceso a todo
   if (user.role === 'ADMIN_SISTEMA') return true;
 
   // Solo Administrador del Sistema puede acceder a licencias, auditoría y configuración de accesos
   if (['LICENCIAS', 'AUDITORIA', 'ACCESOS'].includes(module)) {
     return false;
+  }
+
+  // Si el usuario posee permisos específicos asignados directamente (no genéricos):
+  if (user.customModules && Array.isArray(user.customModules)) {
+    return user.customModules.includes(module);
   }
 
   const permissions = getRolePermissions();
@@ -184,6 +191,109 @@ export function setCurrentUser(user: User): void {
 
 export function getUsers(): User[] {
   return safeGet<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+}
+
+export function saveUser(userData: {
+  id?: string;
+  username: string;
+  name: string;
+  role: UserRole;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  isActive?: boolean;
+  customModules?: AppModule[];
+}): User {
+  const users = getUsers();
+  const cleanUsername = userData.username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+
+  if (userData.id) {
+    const index = users.findIndex((u) => u.id === userData.id);
+    if (index >= 0) {
+      const updated: User = {
+        ...users[index],
+        name: userData.name.trim(),
+        username: cleanUsername,
+        role: userData.role,
+        email: userData.email.trim(),
+        phone: userData.phone?.trim() || '',
+        avatar: userData.avatar || users[index].avatar,
+        isActive: userData.isActive !== undefined ? userData.isActive : true,
+        customModules: userData.customModules,
+      };
+      users[index] = updated;
+      safeSet(STORAGE_KEYS.USERS, users);
+
+      const current = getCurrentUser();
+      if (current.id === updated.id) {
+        safeSet(STORAGE_KEYS.CURRENT_USER, updated);
+      }
+
+      addAuditLog({
+        action: 'MODIFICAR_USUARIO',
+        details: `Usuario actualizado: ${updated.name} (@${updated.username}) - Rol: ${updated.role}${
+          updated.customModules ? ' (Permisos personalizados: ' + updated.customModules.join(', ') + ')' : ''
+        }`,
+        category: 'SEGURIDAD',
+      });
+
+      return updated;
+    }
+  }
+
+  const newUser: User = {
+    id: `usr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    name: userData.name.trim(),
+    username: cleanUsername,
+    role: userData.role,
+    email: userData.email.trim(),
+    phone: userData.phone?.trim() || '',
+    avatar: userData.avatar,
+    isActive: userData.isActive !== undefined ? userData.isActive : true,
+    createdAt: new Date().toISOString(),
+    customModules: userData.customModules,
+  };
+
+  users.push(newUser);
+  safeSet(STORAGE_KEYS.USERS, users);
+
+  addAuditLog({
+    action: 'ALTA_USUARIO',
+    details: `Nuevo usuario creado: ${newUser.name} (@${newUser.username}) con rol ${newUser.role}${
+      newUser.customModules ? ' (Permisos personalizados: ' + newUser.customModules.join(', ') + ')' : ''
+    }`,
+    category: 'SEGURIDAD',
+  });
+
+  return newUser;
+}
+
+export function deleteUser(userId: string): { success: boolean; message: string } {
+  const users = getUsers();
+  const userToDelete = users.find((u) => u.id === userId);
+  if (!userToDelete) {
+    return { success: false, message: 'Usuario no encontrado.' };
+  }
+
+  const currentUser = getCurrentUser();
+  if (currentUser.id === userId) {
+    return { success: false, message: 'No puedes eliminar la cuenta actualmente en uso.' };
+  }
+
+  if (userToDelete.role === 'ADMIN_SISTEMA' && users.filter((u) => u.role === 'ADMIN_SISTEMA').length <= 1) {
+    return { success: false, message: 'No se puede eliminar el único Administrador del Sistema.' };
+  }
+
+  const filtered = users.filter((u) => u.id !== userId);
+  safeSet(STORAGE_KEYS.USERS, filtered);
+
+  addAuditLog({
+    action: 'BAJA_USUARIO',
+    details: `Usuario eliminado: ${userToDelete.name} (@${userToDelete.username})`,
+    category: 'SEGURIDAD',
+  });
+
+  return { success: true, message: 'Usuario eliminado con éxito.' };
 }
 
 // --- PRODUCTOS Y STOCK ---
@@ -320,6 +430,46 @@ export function saveQuote(quote: Quote): void {
   });
 }
 
+export function isUserAdmin(user?: User | null): boolean {
+  const target = user || getCurrentUser();
+  return target?.role === 'ADMIN_SISTEMA' || target?.role === 'ADMIN';
+}
+
+export function approveQuoteByAdmin(quoteId: string, adminUser?: User): Quote {
+  const quotes = getQuotes();
+  const qIndex = quotes.findIndex((q) => q.id === quoteId || q.quoteNumber === quoteId);
+  if (qIndex < 0) throw new Error('Presupuesto no encontrado');
+
+  const user = adminUser || getCurrentUser();
+  if (!isUserAdmin(user)) {
+    throw new Error('Solo los administradores pueden aprobar presupuestos.');
+  }
+
+  const quote = quotes[qIndex];
+  quote.status = 'APROBADO_ADMIN';
+  quote.adminApprovedAt = new Date().toISOString();
+  quote.adminApprovedByName = user.name;
+
+  quotes[qIndex] = quote;
+  safeSet(STORAGE_KEYS.QUOTES, quotes);
+
+  addAuditLog({
+    action: 'APROBACION_ADMIN_PRESUPUESTO',
+    details: `El administrador ${user.name} aprobó el presupuesto ${quote.quoteNumber} para ${quote.clientName} ($${quote.total.toLocaleString('es-AR')}). Habilitado para envío al cliente.`,
+    category: 'PRESUPUESTO',
+  });
+
+  addSystemNotification({
+    title: `Presupuesto ${quote.quoteNumber} Aprobado por Administración`,
+    message: `Aprobado por ${user.name}. El presupuesto para ${quote.clientName} ya puede ser enviado al cliente por WhatsApp o Email.`,
+    type: 'SISTEMA',
+    priority: 'NORMAL',
+    requiresEvidence: false,
+  });
+
+  return quote;
+}
+
 export function respondToQuoteByClient(
   quoteId: string,
   response: 'ACEPTADO' | 'RECHAZADO',
@@ -331,6 +481,9 @@ export function respondToQuoteByClient(
 
   const quote = quotes[qIndex];
   quote.status = response;
+  if (response === 'ACEPTADO') {
+    quote.clientApprovedAt = new Date().toISOString();
+  }
   if (clientNotes) {
     quote.description = `${quote.description}\n[Nota del Cliente al ${response}]: ${clientNotes}`;
   }
@@ -346,7 +499,7 @@ export function respondToQuoteByClient(
 
   addSystemNotification({
     title: `Presupuesto ${quote.quoteNumber} ${response} por el cliente`,
-    message: `El cliente ${quote.clientName} ha respondido '${response}' al presupuesto '${quote.title}' por $${quote.total.toLocaleString('es-AR')}.`,
+    message: `El cliente ${quote.clientName} ha respondido '${response}' al presupuesto '${quote.title}' por $${quote.total.toLocaleString('es-AR')}. Listo para generar Orden de Trabajo.`,
     type: response === 'ACEPTADO' ? 'COBRO_OT' : 'SISTEMA',
     priority: response === 'ACEPTADO' ? 'ALTA' : 'NORMAL',
     requiresEvidence: false,
@@ -398,7 +551,7 @@ export function acceptQuoteAndCreateWorkOrder(
 
   addAuditLog({
     action: 'ACEPTACION_PRESUPUESTO_OT',
-    details: `Presupuesto ${quote.quoteNumber} aceptado. Se generó ${otNumber} con entrega estimada ${estimatedDeliveryDate}. Anticipo: $${advancePayment}`,
+    details: `Presupuesto ${quote.quoteNumber} aceptado. Se generó ${otNumber} con entrega pactada ${estimatedDeliveryDate}. Anticipo: $${advancePayment}. Saldo restante: $${newOrder.remainingBalance}`,
     category: 'PRESUPUESTO',
   });
 
@@ -432,34 +585,82 @@ export function addWorkOrderDirect(order: Omit<WorkOrder, 'id' | 'orderNumber' |
   return newOrder;
 }
 
-export function finalizeWorkOrderAndInvoice(
+// Paso 5: El usuario confirma la finalización de la tarea
+export function confirmWorkOrderCompletionByUser(
   orderId: string,
-  paymentMethod: { type: 'EFECTIVO' | 'CHEQUE' | 'BILLETERA' | 'TARJETA' | 'CTA_CTE'; reference?: string },
   completionNotes?: string,
   completionPhotos?: any[]
-): { order: WorkOrder; sale: Sale } {
+): WorkOrder {
   const orders = getWorkOrders();
   const index = orders.findIndex((o) => o.id === orderId);
   if (index < 0) throw new Error('Orden de trabajo no encontrada');
 
   const order = orders[index];
+  const user = getCurrentUser();
   const now = new Date().toISOString();
 
-  // Actualizar estado de la OT a COBRADA
-  order.status = 'COBRADA';
-  order.completedAt = now;
-  order.completionNotes = completionNotes || 'Trabajo finalizado y facturado.';
+  order.status = 'FINALIZADA_USUARIO';
+  order.userCompletedAt = now;
+  order.userCompletedByName = user.name;
+  if (completionNotes) {
+    order.completionNotes = completionNotes;
+  }
   if (completionPhotos && completionPhotos.length > 0) {
     order.photos = [...order.photos, ...completionPhotos];
   }
-  const remainingAmount = order.remainingBalance;
-  order.remainingBalance = 0;
 
   orders[index] = order;
   safeSet(STORAGE_KEYS.WORK_ORDERS, orders);
 
-  // Generar Factura / Venta oficial
+  addAuditLog({
+    action: 'CONFIRMAR_FINALIZACION_TAREA_USUARIO',
+    details: `El usuario ${user.name} confirmó la finalización de la tarea en la orden ${order.orderNumber} (${order.title}). Saldo restante adeudado: $${order.remainingBalance.toLocaleString('es-AR')}`,
+    category: 'PRESUPUESTO',
+  });
+
+  addSystemNotification({
+    title: `TAREA FINALIZADA: Orden ${order.orderNumber} por ${user.name}`,
+    message: `La tarea '${order.title}' fue completada por el usuario/técnico. Saldo restante adeudado por facturar: $${order.remainingBalance.toLocaleString('es-AR')}. Pendiente de aprobación administrativa de obra.`,
+    type: 'COBRO_OT',
+    priority: 'ALTA',
+    requiresEvidence: false,
+  });
+
+  return order;
+}
+
+// Paso 6: El administrador aprueba la finalización de obra y se genera la factura por el monto restante adeudado
+export function adminApproveCompletionAndInvoice(
+  orderId: string,
+  paymentMethod: { type: PaymentMethodType; reference?: string },
+  adminNotes?: string
+): { order: WorkOrder; sale: Sale } {
+  const orders = getWorkOrders();
+  const index = orders.findIndex((o) => o.id === orderId);
+  if (index < 0) throw new Error('Orden de trabajo no encontrada');
+
   const user = getCurrentUser();
+  if (!isUserAdmin(user)) {
+    throw new Error('Solo los administradores pueden aprobar la finalización de obra y generar la factura.');
+  }
+
+  const order = orders[index];
+  const now = new Date().toISOString();
+
+  order.status = 'COBRADA';
+  order.completedAt = now;
+  order.adminApprovedAt = now;
+  order.adminApprovedByName = user.name;
+  if (adminNotes) {
+    order.completionNotes = order.completionNotes
+      ? `${order.completionNotes}\n[Aprobación Admin]: ${adminNotes}`
+      : `[Aprobación Admin]: ${adminNotes}`;
+  }
+
+  const remainingAmount = order.remainingBalance;
+  order.remainingBalance = 0;
+
+  // Generar Factura / Venta oficial por el saldo restante adeudado
   const sale = registerSale({
     cashierId: user.id,
     cashierName: user.name,
@@ -476,24 +677,44 @@ export function finalizeWorkOrderAndInvoice(
       },
     ],
     subtotal: order.totalAmount,
-    discount: order.advancePayment, // El anticipo figura como deducción de cobro final
+    discount: order.advancePayment, // El anticipo figura como deducción del cobro final
     total: remainingAmount,
     payments: [
       {
         type: paymentMethod.type,
         amount: remainingAmount,
-        reference: paymentMethod.reference || `Liquidación final de ${order.orderNumber}`,
+        reference: paymentMethod.reference || `Facturación y liquidación final de ${order.orderNumber}`,
       },
     ],
   });
 
+  order.invoiceReceiptNumber = sale.receiptNumber;
+  orders[index] = order;
+  safeSet(STORAGE_KEYS.WORK_ORDERS, orders);
+
   addAuditLog({
-    action: 'FINALIZACION_Y_FACTURACION_OT',
-    details: `OT ${order.orderNumber} finalizada y facturada con ticket ${sale.receiptNumber}. Cobro de saldo $${remainingAmount} vía ${paymentMethod.type}`,
+    action: 'APROBACION_ADMIN_FINALIZACION_Y_FACTURACION',
+    details: `Administrador ${user.name} aprobó finalización de obra para ${order.orderNumber}. Factura ${sale.receiptNumber} generada por el saldo restante adeudado de $${remainingAmount} vía ${paymentMethod.type}`,
     category: 'VENTA',
   });
 
   return { order, sale };
+}
+
+// Compatibilidad
+export function finalizeWorkOrderAndInvoice(
+  orderId: string,
+  paymentMethod: { type: PaymentMethodType; reference?: string },
+  completionNotes?: string,
+  completionPhotos?: any[]
+): { order: WorkOrder; sale: Sale } {
+  // Si no estaba marcada como finalizada por el usuario, registrar la finalización
+  const orders = getWorkOrders();
+  const found = orders.find((o) => o.id === orderId);
+  if (found && found.status !== 'FINALIZADA_USUARIO') {
+    confirmWorkOrderCompletionByUser(orderId, completionNotes, completionPhotos);
+  }
+  return adminApproveCompletionAndInvoice(orderId, paymentMethod, completionNotes);
 }
 
 export function updateWorkOrder(order: WorkOrder): void {

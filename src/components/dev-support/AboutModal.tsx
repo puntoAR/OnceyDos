@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { X, ExternalLink, ShieldCheck, Code2, Globe, Heart, MessageSquare } from 'lucide-react';
+import { X, ShieldCheck, Code2, Globe, Heart, MessageSquare } from 'lucide-react';
 import { getLicense } from '@/lib/store';
 
 interface Props {
@@ -74,18 +74,9 @@ export function AboutModal({ isOpen, onClose, onOpenChat }: Props) {
             </div>
           </div>
 
-          <div className="space-y-2 text-xs text-slate-600 bg-amber-50/50 p-4 rounded-xl border border-amber-100/60">
-            <p className="font-semibold text-amber-900">Repositorio Oficial & Despliegue:</p>
-            <a
-              href="https://github.com/puntoAR/OnceyDos"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-amber-700 hover:text-amber-800 font-mono underline break-all"
-            >
-              https://github.com/puntoAR/OnceyDos
-              <ExternalLink className="w-3.5 h-3.5 ml-1 shrink-0" />
-            </a>
-            <p className="text-slate-500 pt-1">
+          <div className="space-y-1.5 text-xs text-slate-600 bg-amber-50/50 p-4 rounded-xl border border-amber-100/60">
+            <p className="font-semibold text-amber-900">Plataforma & Despliegue:</p>
+            <p className="text-slate-600">
               Desplegable y optimizado para <strong>Vercel</strong> con soporte multi-dispositivo y arquitectura 100% modular.
             </p>
           </div>

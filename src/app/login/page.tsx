@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { User, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
+import { User as UserIcon, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { setCurrentUser, getUsers } from '@/lib/store';
+import { User } from '@/types';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    setAvailableUsers(getUsers());
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +126,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-slate-500" />
+              <UserIcon className="w-3.5 h-3.5 text-slate-500" />
               <span>Usuario</span>
             </label>
             <div className="relative">
@@ -172,26 +178,21 @@ export default function LoginPage() {
         {/* Acceso rápido a roles de prueba */}
         <div className="mt-6 pt-5 border-t border-slate-100 text-center">
           <p className="text-[11px] text-slate-400 font-medium mb-2.5">
-            Seleccionar rol de demostración:
+            Seleccionar usuario del sistema:
           </p>
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {[
-              { id: 'admin_sistema', label: 'Admin Sistema' },
-              { id: 'admin', label: 'Administrador' },
-              { id: 'tecnico', label: 'Técnico Obra' },
-              { id: 'cajero', label: 'Mostrador / Caja' },
-            ].map((r) => (
+          <div className="flex flex-wrap justify-center gap-1.5 max-h-28 overflow-y-auto p-1">
+            {availableUsers.map((u) => (
               <button
-                key={r.id}
+                key={u.id}
                 type="button"
-                onClick={() => handleQuickFill(r.id as any)}
+                onClick={() => handleQuickFill(u.username)}
                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
-                  username === r.id
-                    ? 'bg-amber-500 text-slate-950'
+                  username.toLowerCase() === u.username.toLowerCase()
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                 }`}
               >
-                {r.label}
+                {u.name.split(' ')[0]} (@{u.username})
               </button>
             ))}
           </div>

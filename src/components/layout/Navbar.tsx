@@ -196,7 +196,16 @@ export function Navbar({ onToggleSidebar }: Props) {
                       </span>
                     </button>
                   ))}
-                  <div className="pt-2 border-t border-slate-100 px-4">
+                  <div className="pt-2 border-t border-slate-100 px-4 space-y-1.5">
+                    {canUserAccessModule(currentUser, 'AUDITORIA') && (
+                      <Link
+                        href="/auditoria?tab=usuarios"
+                        onClick={() => setShowRoleMenu(false)}
+                        className="block text-center py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-colors border border-amber-200"
+                      >
+                        + Alta & Gestión de Usuarios
+                      </Link>
+                    )}
                     <Link
                       href="/login"
                       onClick={() => setShowRoleMenu(false)}

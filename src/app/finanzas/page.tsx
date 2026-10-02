@@ -263,7 +263,7 @@ export default function FinanzasPage() {
                             }}
                             className="py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs"
                           >
-                            Resolver con Evidencia
+                            Confirmar
                           </button>
                         ) : (
                           <div className="text-[11px] text-emerald-700 font-semibold" title={obl.resolutionEvidence?.operationNumber}>

@@ -150,15 +150,31 @@ export default function PublicQuotePage() {
                   ? 'bg-emerald-100 text-emerald-800'
                   : quote.status === 'RECHAZADO'
                   ? 'bg-red-100 text-red-800'
+                  : quote.status === 'APROBADO_ADMIN' || quote.status === 'ENVIADO'
+                  ? 'bg-blue-100 text-blue-800'
                   : 'bg-amber-100 text-amber-900'
               }`}
             >
-              ESTADO: {quote.status}
+              {quote.status === 'PENDIENTE_APROBACION'
+                ? 'EN REVISIÓN ADMINISTRATIVA'
+                : quote.status === 'APROBADO_ADMIN'
+                ? 'LISTO PARA APROBACIÓN'
+                : `ESTADO: ${quote.status}`}
             </span>
           </div>
         </div>
 
-        {isExpired && quote.status === 'ENVIADO' && (
+        {quote.status === 'PENDIENTE_APROBACION' && (
+          <div className="mx-6 sm:mx-8 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-center gap-3">
+            <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <strong className="block">Presupuesto en Revisión Interna:</strong>
+              <span>Este presupuesto fue generado y está siendo revisado por la administración para su validación oficial previa al envío.</span>
+            </div>
+          </div>
+        )}
+
+        {isExpired && (quote.status === 'ENVIADO' || quote.status === 'APROBADO_ADMIN') && (
           <div className="mx-6 sm:mx-8 mt-4 p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
             <span>
@@ -267,7 +283,7 @@ export default function PublicQuotePage() {
           </div>
 
           {/* Botones de Acción para el Cliente (Aceptar / Rechazar) */}
-          {quote.status !== 'ACEPTADO' && quote.status !== 'RECHAZADO' ? (
+          {quote.status === 'APROBADO_ADMIN' || quote.status === 'ENVIADO' ? (
             <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center gap-3">
               <button
                 onClick={() => setShowAcceptModal(true)}
@@ -302,6 +318,11 @@ export default function PublicQuotePage() {
               <p className="text-xs text-emerald-700">
                 Se generará su Orden de Trabajo y nos contactaremos con usted para confirmar la fecha tentativa de visita.
               </p>
+            </div>
+          ) : quote.status === 'PENDIENTE_APROBACION' ? (
+            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-center text-amber-900 text-xs font-semibold">
+              <Clock className="w-4 h-4 inline-block mr-1 text-amber-700" />
+              Aguardando validación de Administración. La opción de aprobación se habilitará una vez aprobado.
             </div>
           ) : (
             <div className="p-4 bg-red-50 rounded-2xl border border-red-200 text-center text-red-800 text-xs font-bold">

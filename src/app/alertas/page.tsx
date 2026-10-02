@@ -105,7 +105,7 @@ export default function AlertasPage() {
                       </span>
                       {notif.requiresEvidence && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
-                          Requiere Evidencia Obligatoria
+                          REQUIERE CONFIRMACIÓN
                         </span>
                       )}
                       <span className="text-[11px] text-slate-400">
@@ -134,7 +134,7 @@ export default function AlertasPage() {
                       className="py-3 px-5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 flex items-center gap-2 transition-all"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Confirmar Transacción con Evidencia</span>
+                      <span>Confirmar Transacción</span>
                     </button>
                   ) : (
                     <button

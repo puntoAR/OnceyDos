@@ -156,7 +156,7 @@ export default function DashboardPage() {
               className="shrink-0 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 transition-all flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Confirmar con Evidencia</span>
+              <span>Confirmar Transacción</span>
             </button>
           </div>
         </div>

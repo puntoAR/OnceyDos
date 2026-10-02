@@ -22,12 +22,16 @@ import {
   Smartphone,
   Landmark,
   CreditCard,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   getWorkOrders,
   updateWorkOrder,
   addWorkOrderDirect,
+  confirmWorkOrderCompletionByUser,
+  adminApproveCompletionAndInvoice,
   finalizeWorkOrderAndInvoice,
+  isUserAdmin,
   getClients,
   getCurrentUser,
 } from '@/lib/store';
@@ -56,12 +60,16 @@ export default function WorkOrdersPage() {
     photos: [] as string[],
   });
 
-  // Modal para Finalización de Tarea & Facturación Automática
-  const [orderToInvoice, setOrderToInvoice] = useState<WorkOrder | null>(null);
+  // Modal Paso 5: Usuario confirma finalización de tarea
+  const [orderToConfirmByUser, setOrderToConfirmByUser] = useState<WorkOrder | null>(null);
+  const [userCompletionNotes, setUserCompletionNotes] = useState('');
+  const [userCompletionPhotos, setUserCompletionPhotos] = useState<string[]>([]);
+
+  // Modal Paso 6: Administrador aprueba fin de obra y factura saldo restante
+  const [orderToApproveByAdmin, setOrderToApproveByAdmin] = useState<WorkOrder | null>(null);
+  const [adminNotes, setAdminNotes] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentMethodType>('EFECTIVO');
   const [paymentRef, setPaymentRef] = useState('');
-  const [completionNotes, setCompletionNotes] = useState('');
-  const [completionPhotos, setCompletionPhotos] = useState<string[]>([]);
   const [completedInvoice, setCompletedInvoice] = useState<{ order: WorkOrder; sale: Sale } | null>(null);
 
   const currentUser = getCurrentUser();
@@ -136,9 +144,16 @@ export default function WorkOrdersPage() {
   };
 
   const handleStatusChange = (order: WorkOrder, newStatus: WorkOrderStatus) => {
-    if (newStatus === 'FINALIZADA') {
-      // Si el usuario quiere marcarla finalizada, abrir modal de facturación directa
-      setOrderToInvoice(order);
+    if (newStatus === 'FINALIZADA_USUARIO') {
+      setOrderToConfirmByUser(order);
+      return;
+    }
+    if (newStatus === 'FINALIZADA' || newStatus === 'COBRADA') {
+      if (isUserAdmin(currentUser)) {
+        setOrderToApproveByAdmin(order);
+      } else {
+        alert('Solo los administradores pueden aprobar la finalización de obra y generar la factura.');
+      }
       return;
     }
 
@@ -171,12 +186,12 @@ export default function WorkOrdersPage() {
     loadData();
   };
 
-  // Confirmar finalización de tarea y generar factura/ticket
-  const handleConfirmFinalizeAndInvoice = (e: React.FormEvent) => {
+  // Paso 5: Usuario confirma finalización de tarea
+  const handleConfirmCompletionByUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderToInvoice) return;
+    if (!orderToConfirmByUser) return;
 
-    const formattedCompPhotos = completionPhotos.map((url, idx) => ({
+    const formattedCompPhotos = userCompletionPhotos.map((url, idx) => ({
       id: `comp-photo-${Date.now()}-${idx}`,
       url,
       description: `Foto de Fin de Obra / Control de Calidad #${idx + 1}`,
@@ -184,24 +199,48 @@ export default function WorkOrdersPage() {
       stage: 'FINALIZADO' as const,
     }));
 
-    const result = finalizeWorkOrderAndInvoice(
-      orderToInvoice.id,
-      { type: paymentType, reference: paymentRef.trim() || undefined },
-      completionNotes.trim() || undefined,
+    confirmWorkOrderCompletionByUser(
+      orderToConfirmByUser.id,
+      userCompletionNotes.trim() || undefined,
       formattedCompPhotos
     );
 
     try {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
     } catch {}
 
-    setCompletedInvoice(result);
-    setOrderToInvoice(null);
+    setOrderToConfirmByUser(null);
     setActiveOrderModal(null);
-    setCompletionNotes('');
-    setCompletionPhotos([]);
-    setPaymentRef('');
+    setUserCompletionNotes('');
+    setUserCompletionPhotos([]);
     loadData();
+  };
+
+  // Paso 6: Administrador aprueba fin de obra y genera la factura
+  const handleAdminApproveAndInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderToApproveByAdmin) return;
+
+    try {
+      const result = adminApproveCompletionAndInvoice(
+        orderToApproveByAdmin.id,
+        { type: paymentType, reference: paymentRef.trim() || undefined },
+        adminNotes.trim() || undefined
+      );
+
+      try {
+        confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+      } catch {}
+
+      setCompletedInvoice(result);
+      setOrderToApproveByAdmin(null);
+      setActiveOrderModal(null);
+      setAdminNotes('');
+      setPaymentRef('');
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   return (
@@ -230,8 +269,8 @@ export default function WorkOrdersPage() {
               <option value="TODAS">Todos los Estados ({orders.length})</option>
               <option value="EN_PROCESO">En Proceso</option>
               <option value="ESPERA_REPUESTOS">En Espera de Repuestos</option>
-              <option value="FINALIZADA">Finalizadas</option>
-              <option value="COBRADA">Cobradas</option>
+              <option value="FINALIZADA_USUARIO">Paso 5: Finalizadas por Técnico</option>
+              <option value="COBRADA">Paso 6: Aprobadas & Facturadas</option>
             </select>
           </div>
 
@@ -249,7 +288,9 @@ export default function WorkOrdersPage() {
       {/* Grid de OTs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredOrders.map((order) => {
-          const isDone = order.status === 'FINALIZADA' || order.status === 'COBRADA';
+          const isUserCompleted = order.status === 'FINALIZADA_USUARIO';
+          const isFullyDone = order.status === 'FINALIZADA' || order.status === 'COBRADA';
+          const isAdmin = isUserAdmin(currentUser);
 
           return (
             <div
@@ -266,14 +307,18 @@ export default function WorkOrdersPage() {
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                       order.status === 'COBRADA'
                         ? 'bg-blue-100 text-blue-800'
-                        : order.status === 'FINALIZADA'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        : isUserCompleted
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
                         : order.status === 'ESPERA_REPUESTOS'
                         ? 'bg-red-100 text-red-800'
-                        : 'bg-amber-100 text-amber-900'
+                        : 'bg-emerald-100 text-emerald-800'
                     }`}
                   >
-                    {order.status.replace('_', ' ')}
+                    {isUserCompleted
+                      ? '5. TAREA FINALIZADA (PENDIENTE ADMIN)'
+                      : isFullyDone
+                      ? '6. OBRA FACTURADA'
+                      : order.status.replace('_', ' ')}
                   </span>
                 </div>
 
@@ -330,18 +375,46 @@ export default function WorkOrdersPage() {
                   </span>
                 </div>
 
-                {/* Botón de Finalizar y Facturar directo si está en proceso */}
-                {!isDone && (
+                {/* Botón de Paso 5 o Paso 6 */}
+                {isUserCompleted ? (
+                  <div className="space-y-1.5">
+                    <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Completada por {order.userCompletedByName?.split(' ')[0] || 'el técnico'}</span>
+                    </div>
+                    {isAdmin ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOrderToApproveByAdmin(order);
+                        }}
+                        className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-colors"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>Paso 6: Aprobar Fin de Obra & Facturar</span>
+                      </button>
+                    ) : (
+                      <span className="block text-center text-[10px] text-slate-400 italic">
+                        Aguardando aprobación del administrador para facturar.
+                      </span>
+                    )}
+                  </div>
+                ) : !isFullyDone ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setOrderToInvoice(order);
+                      setOrderToConfirmByUser(order);
                     }}
-                    className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-colors"
+                    className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-colors"
                   >
-                    <Receipt className="w-3.5 h-3.5" />
-                    <span>Finalizar Tarea & Facturar</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Paso 5: Confirmar Finalización de Tarea</span>
                   </button>
+                ) : (
+                  <div className="p-2 bg-blue-50 rounded-xl text-center text-xs font-bold text-blue-900 border border-blue-200 flex items-center justify-center gap-1.5">
+                    <Receipt className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Obra Aprobada & Facturada ({order.invoiceReceiptNumber || 'OK'})</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -560,7 +633,7 @@ export default function WorkOrdersPage() {
                   Actualizar Estado de la Orden de Trabajo:
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {(['EN_PROCESO', 'ESPERA_REPUESTOS', 'FINALIZADA', 'COBRADA'] as WorkOrderStatus[]).map(
+                  {(['EN_PROCESO', 'ESPERA_REPUESTOS', 'FINALIZADA_USUARIO', 'COBRADA'] as WorkOrderStatus[]).map(
                     (st) => (
                       <button
                         key={st}
@@ -571,7 +644,11 @@ export default function WorkOrdersPage() {
                             : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
-                        {st.replace('_', ' ')}
+                        {st === 'FINALIZADA_USUARIO'
+                          ? '5. FINALIZADA POR TÉCNICO'
+                          : st === 'COBRADA'
+                          ? '6. APROBADA & FACTURADA'
+                          : st.replace('_', ' ')}
                       </button>
                     )
                   )}
@@ -627,18 +704,43 @@ export default function WorkOrdersPage() {
                 />
               </div>
 
-              {/* Botón de Finalización & Facturación */}
-              {activeOrderModal.status !== 'COBRADA' && (
+              {/* Botón según Paso 5 o Paso 6 */}
+              {activeOrderModal.status === 'FINALIZADA_USUARIO' ? (
+                isUserAdmin(currentUser) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = activeOrderModal;
+                      setActiveOrderModal(null);
+                      setOrderToApproveByAdmin(target);
+                    }}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all"
+                  >
+                    <Receipt className="w-4 h-4" />
+                    <span>Paso 6: Aprobar Fin de Obra & Generar Factura</span>
+                  </button>
+                ) : (
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-center text-xs text-amber-900 font-semibold">
+                    Tarea finalizada por el técnico. Aguardando aprobación de administración para facturar.
+                  </div>
+                )
+              ) : activeOrderModal.status !== 'COBRADA' && activeOrderModal.status !== 'FINALIZADA' ? (
                 <button
                   type="button"
                   onClick={() => {
-                    setOrderToInvoice(activeOrderModal);
+                    const target = activeOrderModal;
+                    setActiveOrderModal(null);
+                    setOrderToConfirmByUser(target);
                   }}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all"
                 >
-                  <Receipt className="w-4 h-4" />
-                  <span>Confirmar Finalización de Tarea & Generar Factura</span>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Paso 5: Confirmar Finalización de Tarea</span>
                 </button>
+              ) : (
+                <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200 text-center text-xs text-blue-900 font-bold">
+                  Obra Aprobada por Administración & Facturada ({activeOrderModal.invoiceReceiptNumber || 'OK'})
+                </div>
               )}
             </div>
 
@@ -654,8 +756,95 @@ export default function WorkOrdersPage() {
         </div>
       )}
 
-      {/* MODAL FINALIZAR TAREA Y GENERAR FACTURA */}
-      {orderToInvoice && (
+      {/* MODAL PASO 5: EL USUARIO CONFIRMA LA FINALIZACIÓN DE LA TAREA */}
+      {orderToConfirmByUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl max-h-[92vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+            <div className="bg-amber-500 text-slate-950 p-5 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-950/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-slate-950" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-900 block">
+                    Paso 5 del Flujo de Trabajo
+                  </span>
+                  <h3 className="font-bold text-base text-slate-950 leading-tight">
+                    Confirmar Finalización de la Tarea (Usuario / Técnico)
+                  </h3>
+                  <p className="text-xs text-slate-800">
+                    Orden N° {orderToConfirmByUser.orderNumber} &bull; {orderToConfirmByUser.clientName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setOrderToConfirmByUser(null)}
+                className="p-1 rounded-lg text-slate-800 hover:text-black"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCompletionByUser} className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
+                <strong>Confirmación de Cierre Técnico:</strong> Como usuario o técnico ejecutor, confirma que la obra <strong>{orderToConfirmByUser.title}</strong> fue finalizada. A continuación, el Administrador aprobará la finalización de obra para generar la factura por el saldo adeudado.
+              </div>
+
+              {/* Fotos de Control de Fin de Obra */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+                <ImageUploader
+                  images={userCompletionPhotos}
+                  onChange={setUserCompletionPhotos}
+                  maxImages={4}
+                  label="Fotografías de Tarea Concluida (Cámara o Archivo)"
+                  allowCamera={true}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Observaciones Técnicas de Finalización <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={userCompletionNotes}
+                  onChange={(e) => setUserCompletionNotes(e.target.value)}
+                  placeholder="Detalle de tareas concluidas, pruebas realizadas y conformidad del trabajo..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex justify-between font-mono">
+                <span className="text-slate-500">Saldo restante adeudado por facturar:</span>
+                <span className="font-bold text-slate-900">
+                  ${orderToConfirmByUser.remainingBalance.toLocaleString('es-AR')}
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setOrderToConfirmByUser(null)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-semibold text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 flex items-center justify-center space-x-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Confirmar Finalización de Tarea</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PASO 6: EL ADMINISTRADOR APRUEBA LA FINALIZACIÓN DE OBRA Y GENERA LA FACTURA */}
+      {orderToApproveByAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-xl max-h-[92vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
             <div className="bg-emerald-800 text-white p-5 flex items-center justify-between">
@@ -664,61 +853,53 @@ export default function WorkOrdersPage() {
                   <Receipt className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-white">
-                    Finalización de Tarea & Facturación Automática
+                  <span className="text-[10px] uppercase font-black tracking-wider text-emerald-200 block">
+                    Paso 6 del Flujo de Trabajo
+                  </span>
+                  <h3 className="font-bold text-base text-white leading-tight">
+                    Aprobación Administrativa de Obra & Emisión de Factura
                   </h3>
-                  <p className="text-xs text-emerald-200">
-                    Orden N° {orderToInvoice.orderNumber} &bull; {orderToInvoice.clientName}
+                  <p className="text-xs text-emerald-100">
+                    Orden N° {orderToApproveByAdmin.orderNumber} &bull; {orderToApproveByAdmin.clientName}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setOrderToInvoice(null)}
+                onClick={() => setOrderToApproveByAdmin(null)}
                 className="p-1 rounded-lg text-white/80 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleConfirmFinalizeAndInvoice} className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Fotos de Control de Fin de Obra */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-                <ImageUploader
-                  images={completionPhotos}
-                  onChange={setCompletionPhotos}
-                  maxImages={4}
-                  label="Fotografías de Obra Terminada / Control de Calidad"
-                  allowCamera={true}
-                />
+            <form onSubmit={handleAdminApproveAndInvoice} className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Información de Tarea Concluida por el usuario */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
+                <span className="font-bold text-slate-800 block">Informe del técnico/usuario:</span>
+                <p className="text-slate-600 italic">
+                  &ldquo;{orderToApproveByAdmin.completionNotes || 'Trabajo ejecutado según especificaciones técnicas.'}&rdquo;
+                </p>
+                {orderToApproveByAdmin.userCompletedByName && (
+                  <span className="text-[10px] text-slate-400 block pt-1">
+                    Completada por: <strong>{orderToApproveByAdmin.userCompletedByName}</strong>
+                  </span>
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Observaciones de Cierre de Tarea
-                </label>
-                <textarea
-                  rows={2}
-                  value={completionNotes}
-                  onChange={(e) => setCompletionNotes(e.target.value)}
-                  placeholder="Trabajo ejecutado según especificaciones técnicas pactadas..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
-                />
-              </div>
-
-              {/* Resumen de Cobro y Facturación */}
+              {/* Resumen de Cobro y Facturación del Saldo Restante Adeudado */}
               <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs space-y-2">
                 <div className="flex justify-between text-slate-600">
                   <span>Monto Total de la Orden:</span>
-                  <span className="font-mono font-bold">${orderToInvoice.totalAmount.toLocaleString('es-AR')}</span>
+                  <span className="font-mono font-bold">${orderToApproveByAdmin.totalAmount.toLocaleString('es-AR')}</span>
                 </div>
                 <div className="flex justify-between text-emerald-700">
-                  <span>Anticipo ya Cobrado:</span>
-                  <span className="font-mono font-bold">-${orderToInvoice.advancePayment.toLocaleString('es-AR')}</span>
+                  <span>Anticipo / Entrega Recibida:</span>
+                  <span className="font-mono font-bold">-${orderToApproveByAdmin.advancePayment.toLocaleString('es-AR')}</span>
                 </div>
                 <div className="flex justify-between font-black text-sm text-slate-900 pt-2 border-t border-emerald-200">
-                  <span>SALDO A FACTURAR Y COBRAR:</span>
+                  <span>MONTO RESTANTE ADEUDADO A FACTURAR:</span>
                   <span className="font-mono text-emerald-900 text-base">
-                    ${orderToInvoice.remainingBalance.toLocaleString('es-AR')}
+                    ${orderToApproveByAdmin.remainingBalance.toLocaleString('es-AR')}
                   </span>
                 </div>
               </div>
@@ -726,7 +907,7 @@ export default function WorkOrdersPage() {
               {/* Selector de Medio de Cobro */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2">
-                  Medio de Cobro del Saldo
+                  Medio de Cobro del Monto Restante
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
@@ -759,7 +940,7 @@ export default function WorkOrdersPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Referencia / N° de Comprobante de Cobro
+                  Referencia / N° de Comprobante o Transacción
                 </label>
                 <input
                   type="text"
@@ -770,10 +951,23 @@ export default function WorkOrdersPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Observaciones de Cierre Administrativo (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  placeholder="Ej: Obra aprobada satisfactoriamente por administración..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
+
               <div className="flex items-center space-x-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setOrderToInvoice(null)}
+                  onClick={() => setOrderToApproveByAdmin(null)}
                   className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-semibold text-xs"
                 >
                   Cancelar
@@ -782,8 +976,8 @@ export default function WorkOrdersPage() {
                   type="submit"
                   className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-1.5"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Emitir Factura y Cobrar</span>
+                  <Receipt className="w-4 h-4" />
+                  <span>Aprobar Obra & Generar Factura</span>
                 </button>
               </div>
             </form>

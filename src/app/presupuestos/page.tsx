@@ -23,14 +23,20 @@ import {
   Copy,
   Check,
   ExternalLink,
+  ShieldCheck,
+  AlertCircle,
+  FileText,
 } from 'lucide-react';
 import {
   getQuotes,
   saveQuote,
+  approveQuoteByAdmin,
+  respondToQuoteByClient,
   acceptQuoteAndCreateWorkOrder,
   getProducts,
   getClients,
   getCurrentUser,
+  isUserAdmin,
 } from '@/lib/store';
 import { Quote, QuoteItem, QuotePhoto, Product, Client } from '@/types';
 import { ImageUploader } from '@/components/media/ImageUploader';
@@ -230,7 +236,32 @@ export default function PresupuestosPage() {
 
   const total = subtotalMaterials + subtotalLabor;
 
-  const handleSaveQuote = (status: 'BORRADOR' | 'ENVIADO') => {
+  const handleApproveByAdmin = (quoteId: string) => {
+    try {
+      approveQuoteByAdmin(quoteId);
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleManualClientAccept = (quoteId: string) => {
+    try {
+      respondToQuoteByClient(quoteId, 'ACEPTADO', 'Aceptación registrada por acuerdo directo con el cliente.');
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleSendDraftToAdmin = (quoteId: string) => {
+    const q = quotes.find((item) => item.id === quoteId);
+    if (!q) return;
+    saveQuote({ ...q, status: 'PENDIENTE_APROBACION' });
+    loadData();
+  };
+
+  const handleSaveQuote = (status: 'BORRADOR' | 'PENDIENTE_APROBACION' | 'APROBADO_ADMIN') => {
     if (!formData.title.trim()) {
       alert('Por favor ingrese el título del trabajo.');
       return;
@@ -262,6 +293,8 @@ export default function PresupuestosPage() {
       total,
       validityDays: formData.validityDays,
       status,
+      adminApprovedAt: status === 'APROBADO_ADMIN' ? new Date().toISOString() : undefined,
+      adminApprovedByName: status === 'APROBADO_ADMIN' ? technician.name : undefined,
     };
 
     saveQuote(newQuote);
@@ -318,6 +351,10 @@ export default function PresupuestosPage() {
         {quotes.map((q) => {
           const isAccepted = q.status === 'ACEPTADO';
           const isCopied = copiedQuoteId === q.id;
+          const isDraft = q.status === 'BORRADOR';
+          const isPendingAdmin = q.status === 'PENDIENTE_APROBACION';
+          const isApprovedAdmin = q.status === 'APROBADO_ADMIN' || q.status === 'ENVIADO';
+          const isAcceptedClient = q.status === 'ACEPTADO';
 
           return (
             <div
@@ -362,49 +399,116 @@ export default function PresupuestosPage() {
                   </div>
                 </div>
 
-                {/* Botones de Envío al Cliente con Link de Aprobación */}
-                <div className="bg-amber-50/60 p-2.5 rounded-2xl border border-amber-200/70 mb-3 space-y-2">
-                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
-                    Enviar al Cliente para Aprobación:
-                  </span>
-                  <div className="grid grid-cols-3 gap-1.5">
+                {/* Pasos del Flujo de Aprobación */}
+                {isDraft && (
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 mb-3 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Estado: Borrador Interno
+                    </span>
                     <button
-                      onClick={() => shareViaWhatsApp(q)}
-                      className="py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs transition-colors"
-                      title="Enviar por WhatsApp"
+                      onClick={() => handleSendDraftToAdmin(q.id)}
+                      className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs"
                     >
-                      <Share2 className="w-3 h-3" />
-                      <span>WhatsApp</span>
-                    </button>
-
-                    <button
-                      onClick={() => shareViaEmail(q)}
-                      className="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs transition-colors"
-                      title="Enviar por Email"
-                    >
-                      <Mail className="w-3 h-3" />
-                      <span>Email</span>
-                    </button>
-
-                    <button
-                      onClick={() => copyApprovalLink(q)}
-                      className="py-1.5 px-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors"
-                      title="Copiar Link Público"
-                    >
-                      {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      <span>{isCopied ? 'Copiado' : 'Link'}</span>
+                      Generar Presupuesto (Enviar a Aprobación)
                     </button>
                   </div>
+                )}
 
-                  <a
-                    href={`/presupuesto/${q.quoteNumber}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-center text-[10px] font-bold text-amber-800 hover:text-amber-900 hover:underline pt-0.5"
-                  >
-                    Ver vista del cliente (Portal Público) &rarr;
-                  </a>
-                </div>
+                {isPendingAdmin && (
+                  <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200/80 mb-3 space-y-2">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                      <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Paso 1: Generado &bull; Aguardando Aprobación</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800">
+                      Generado por <strong>{q.technicianName}</strong>. El Administrador debe aprobar los costos para habilitar el envío oficial al cliente.
+                    </p>
+                    {isUserAdmin(technician) ? (
+                      <button
+                        onClick={() => handleApproveByAdmin(q.id)}
+                        className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 transition-all"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Paso 2: Aprobar Presupuesto & Habilitar Envío</span>
+                      </button>
+                    ) : (
+                      <div className="p-2 rounded-xl bg-amber-100/70 border border-amber-300 text-[10px] text-amber-900 font-semibold text-center">
+                        En espera de aprobación por Administración
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isApprovedAdmin && (
+                  <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-200/70 mb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                        Paso 2: Aprobado por Admin &bull; Enviar al Cliente
+                      </span>
+                      {q.adminApprovedByName && (
+                        <span className="text-[10px] text-slate-500 font-medium">Por: {q.adminApprovedByName.split(' ')[0]}</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        onClick={() => shareViaWhatsApp(q)}
+                        className="py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs transition-colors"
+                        title="Enviar por WhatsApp"
+                      >
+                        <Share2 className="w-3 h-3" />
+                        <span>WhatsApp</span>
+                      </button>
+                      <button
+                        onClick={() => shareViaEmail(q)}
+                        className="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs transition-colors"
+                        title="Enviar por Email"
+                      >
+                        <Mail className="w-3 h-3" />
+                        <span>Email</span>
+                      </button>
+                      <button
+                        onClick={() => copyApprovalLink(q)}
+                        className="py-1.5 px-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors"
+                        title="Copiar Link Público"
+                      >
+                        {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{isCopied ? 'Copiado' : 'Link'}</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <a
+                        href={`/presupuesto/${q.quoteNumber}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-bold text-blue-700 hover:underline"
+                      >
+                        Ver portal del cliente &rarr;
+                      </a>
+                      <button
+                        onClick={() => handleManualClientAccept(q.id)}
+                        className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200"
+                        title="Registrar que el cliente dio el OK"
+                      >
+                        + Registrar OK Cliente
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isAcceptedClient && (
+                  <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 mb-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        Paso 3: Aprobado por el Cliente
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800">
+                      Cotización formalmente aprobada por el cliente. Listo para emitir la Orden de Trabajo con fechas y entrega.
+                    </p>
+                  </div>
+                )}
 
                 {/* Galería de fotos del relevamiento */}
                 {q.photos.length > 0 && (
@@ -434,27 +538,38 @@ export default function PresupuestosPage() {
                   </span>
                 </div>
 
-                {!isAccepted ? (
-                  <button
-                    onClick={() => {
-                      setQuoteToAccept(q);
-                      const d = new Date();
-                      d.setDate(d.getDate() + 3);
-                      setEstimatedDeliveryDate(d.toISOString().slice(0, 10));
-                    }}
-                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <FileCheck className="w-4 h-4" />
-                    <span>Aceptar & Generar Orden de Trabajo</span>
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="p-2 bg-emerald-50 rounded-xl text-center text-xs font-bold text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Presupuesto Aceptado &bull; OT Generada</span>
+                {isAcceptedClient ? (
+                  !q.workOrderId ? (
+                    <button
+                      onClick={() => {
+                        setQuoteToAccept(q);
+                        const d = new Date();
+                        d.setDate(d.getDate() + 3);
+                        setEstimatedDeliveryDate(d.toISOString().slice(0, 10));
+                        setAdvancePayment(Math.round(q.total * 0.3));
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <FileCheck className="w-4 h-4" />
+                      <span>Paso 4: Generar Orden de Trabajo (OT)</span>
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="p-2 bg-emerald-50 rounded-xl text-center text-xs font-bold text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Presupuesto Aceptado &bull; OT Generada</span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )
+                ) : isPendingAdmin && isUserAdmin(technician) ? (
+                  <button
+                    onClick={() => handleApproveByAdmin(q.id)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Aprobar Presupuesto Como Administrador</span>
+                  </button>
+                ) : null}
               </div>
             </div>
           );
@@ -699,7 +814,7 @@ export default function PresupuestosPage() {
                 Cancelar
               </button>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center space-x-2">
                 <button
                   type="button"
                   onClick={() => handleSaveQuote('BORRADOR')}
@@ -709,11 +824,20 @@ export default function PresupuestosPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSaveQuote('ENVIADO')}
+                  onClick={() => handleSaveQuote('PENDIENTE_APROBACION')}
                   className="py-2.5 px-5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20"
                 >
-                  Guardar & Enviar al Cliente
+                  Paso 1: Generar Presupuesto
                 </button>
+                {isUserAdmin(technician) && (
+                  <button
+                    type="button"
+                    onClick={() => handleSaveQuote('APROBADO_ADMIN')}
+                    className="py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/20"
+                  >
+                    Generar & Aprobar Directo (Admin)
+                  </button>
+                )}
               </div>
             </div>
           </div>
