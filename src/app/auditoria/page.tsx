@@ -28,6 +28,10 @@ import {
   X,
   Phone,
   Mail,
+  KeyRound,
+  Sparkles,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import {
   getAuditLogs,
@@ -75,6 +79,7 @@ export default function AuditoriaPage() {
   const [userRoleFilter, setUserRoleFilter] = useState<string>('TODOS');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [userForm, setUserForm] = useState({
     name: '',
     username: '',
@@ -84,6 +89,8 @@ export default function AuditoriaPage() {
     hasCustomPermissions: false,
     customModules: ['POS'] as AppModule[],
     isActive: true,
+    password: '',
+    mustChangePasswordOnFirstLogin: true,
   });
   const [userFormError, setUserFormError] = useState('');
 
@@ -196,6 +203,7 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
   // --- GESTIÓN Y ALTA DE USUARIOS ---
   const openCreateUserModal = () => {
     setEditingUser(null);
+    setShowPasswordInput(false);
     setUserForm({
       name: '',
       username: '',
@@ -205,6 +213,8 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
       hasCustomPermissions: false,
       customModules: ['POS'],
       isActive: true,
+      password: '',
+      mustChangePasswordOnFirstLogin: true,
     });
     setUserFormError('');
     setIsUserModalOpen(true);
@@ -212,6 +222,7 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
 
   const openEditUserModal = (u: User) => {
     setEditingUser(u);
+    setShowPasswordInput(false);
     const hasCustom = !!(u.customModules && u.customModules.length > 0);
     setUserForm({
       name: u.name,
@@ -222,9 +233,21 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
       hasCustomPermissions: hasCustom,
       customModules: hasCustom ? [...(u.customModules || [])] : ['STOCK', 'POS'],
       isActive: u.isActive !== undefined ? u.isActive : true,
+      password: '', // Vacío para conservar actual si no se desea cambiar
+      mustChangePasswordOnFirstLogin: u.mustChangePasswordOnFirstLogin || false,
     });
     setUserFormError('');
     setIsUserModalOpen(true);
+  };
+
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!#$';
+    let res = '';
+    for (let i = 0; i < 9; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setUserForm((prev) => ({ ...prev, password: res }));
+    setShowPasswordInput(true);
   };
 
   const handleToggleUserModule = (modId: AppModule) => {
@@ -255,6 +278,16 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
       return;
     }
 
+    if (!editingUser && !userForm.password.trim()) {
+      setUserFormError('Debe definir una contraseña de acceso para el nuevo usuario (o presionar "Generar Automática").');
+      return;
+    }
+
+    if (userForm.password.trim().length > 0 && userForm.password.trim().length < 4) {
+      setUserFormError('La contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+
     const cleanUsername = userForm.username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
     const exists = allUsers.some(
       (u) => u.username.toLowerCase() === cleanUsername && (!editingUser || u.id !== editingUser.id)
@@ -274,6 +307,8 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
         role: userForm.role,
         isActive: userForm.isActive,
         customModules: userForm.hasCustomPermissions ? userForm.customModules : undefined,
+        password: userForm.password.trim() || undefined,
+        mustChangePasswordOnFirstLogin: userForm.mustChangePasswordOnFirstLogin,
       });
 
       loadData();
@@ -739,6 +774,13 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
                             Accede a los módulos autorizados en la matriz para {u.role}.
                           </p>
                         )}
+
+                        {u.mustChangePasswordOnFirstLogin && (
+                          <div className="mt-2.5 py-1 px-2.5 rounded-lg bg-amber-50 border border-amber-200/80 text-[10px] font-bold text-amber-800 flex items-center gap-1.5">
+                            <KeyRound className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span>Primer Ingreso: Debe cambiar contraseña</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1145,6 +1187,67 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
                   <option value="ADMIN">Administrador / Encargado de Sucursal</option>
                   <option value="ADMIN_SISTEMA">Administrador del Sistema (Acceso Total)</option>
                 </select>
+              </div>
+
+              {/* Sección: Contraseña de Acceso y Configuración de Primer Ingreso */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Contraseña de Acceso {editingUser ? '(Opcional al editar)' : '*'}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generateRandomPassword}
+                    className="text-[11px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 py-0.5 px-2 rounded-lg bg-amber-100/60 transition-colors"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Generar Automática</span>
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showPasswordInput ? 'text' : 'password'}
+                    placeholder={
+                      editingUser
+                        ? 'Dejar en blanco para conservar la contraseña actual...'
+                        : 'Defina la contraseña (mínimo 4 caracteres)...'
+                    }
+                    value={userForm.password}
+                    onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                    className="w-full px-3 py-2 pr-10 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 outline-hidden font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordInput(!showPasswordInput)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPasswordInput ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Opción de exigir cambio en primer ingreso */}
+                <div className="pt-2 border-t border-slate-200/70">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={userForm.mustChangePasswordOnFirstLogin}
+                      onChange={(e) =>
+                        setUserForm({ ...userForm, mustChangePasswordOnFirstLogin: e.target.checked })
+                      }
+                      className="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-slate-800 block">
+                        Exigir cambio de contraseña en el primer ingreso
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Al iniciar sesión por primera vez con esta clave, el sistema le pedirá al usuario que defina obligatoriamente su propia contraseña personal.
+                      </span>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               {/* Selector de modo de permisos: Genérico o Personalizado */}

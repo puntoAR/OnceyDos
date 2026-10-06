@@ -31,6 +31,8 @@ export interface User {
   isActive?: boolean;
   createdAt?: string;
   customModules?: AppModule[]; // Permisos individuales específicos por usuario (no genéricos)
+  password?: string; // Contraseña de acceso personalizada
+  mustChangePasswordOnFirstLogin?: boolean; // Exigir cambio de clave en el primer ingreso
 }
 
 export interface Product {

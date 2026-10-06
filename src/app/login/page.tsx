@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { User as UserIcon, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
-import { setCurrentUser, getUsers } from '@/lib/store';
+import { User as UserIcon, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, KeyRound, CheckCircle2 } from 'lucide-react';
+import { setCurrentUser, getUsers, changeUserPassword } from '@/lib/store';
 import { User } from '@/types';
 
 export default function LoginPage() {
@@ -15,6 +15,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+
+  // Estado para modal de cambio obligatorio de contraseña en primer ingreso
+  const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
+  const [firstLoginUser, setFirstLoginUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstLoginError, setFirstLoginError] = useState('');
 
   useEffect(() => {
     setAvailableUsers(getUsers());
@@ -34,6 +41,31 @@ export default function LoginPage() {
       return;
     }
 
+    if (found.isActive === false) {
+      setError('Esta cuenta de usuario se encuentra inactiva. Contacte a la administración.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Verificar contraseña (si está definida, o por defecto 123456)
+    const expectedPassword = found.password || '123456';
+    if (password !== expectedPassword) {
+      setError('Contraseña incorrecta. Por favor verifique sus datos.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Si tiene configurado que debe cambiar la contraseña en su primer ingreso
+    if (found.mustChangePasswordOnFirstLogin) {
+      setIsLoading(false);
+      setFirstLoginUser(found);
+      setNewPassword('');
+      setConfirmPassword('');
+      setFirstLoginError('');
+      setShowFirstLoginModal(true);
+      return;
+    }
+
     // Login exitoso
     setTimeout(() => {
       setCurrentUser(found);
@@ -48,9 +80,44 @@ export default function LoginPage() {
     }, 400);
   };
 
-  const handleQuickFill = (userType: string) => {
-    setUsername(userType);
-    setPassword('123456');
+  const handleFirstLoginPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFirstLoginError('');
+
+    if (newPassword.trim().length < 4) {
+      setFirstLoginError('La nueva contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setFirstLoginError('Las contraseñas no coinciden. Verifíquelas.');
+      return;
+    }
+
+    if (!firstLoginUser) return;
+
+    changeUserPassword(firstLoginUser.id, newPassword.trim());
+    const updatedUser: User = {
+      ...firstLoginUser,
+      password: newPassword.trim(),
+      mustChangePasswordOnFirstLogin: false,
+    };
+    setCurrentUser(updatedUser);
+    setShowFirstLoginModal(false);
+
+    // Redirigir
+    if (updatedUser.role === 'TECNICO') {
+      router.push('/stock');
+    } else if (updatedUser.role === 'CAJERO') {
+      router.push('/pos');
+    } else {
+      router.push('/');
+    }
+  };
+
+  const handleQuickFill = (u: User) => {
+    setUsername(u.username);
+    setPassword(u.password || '123456');
     setError('');
   };
 
@@ -185,7 +252,7 @@ export default function LoginPage() {
               <button
                 key={u.id}
                 type="button"
-                onClick={() => handleQuickFill(u.username)}
+                onClick={() => handleQuickFill(u)}
                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
                   username.toLowerCase() === u.username.toLowerCase()
                     ? 'bg-amber-500 text-slate-950 shadow-xs'
@@ -203,7 +270,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Powered by puntoAR en esquina inferior derecha (exacto como en la referencia) */}
+      {/* Powered by puntoAR en esquina inferior derecha */}
       <div className="absolute bottom-6 right-6 z-20 flex items-center space-x-2">
         <span className="text-xs text-slate-500 font-medium italic">powered by</span>
         <div className="relative w-36 h-9">
@@ -216,6 +283,86 @@ export default function LoginPage() {
           />
         </div>
       </div>
+
+      {/* Modal: Cambio Obligatorio de Contraseña en el Primer Ingreso */}
+      {showFirstLoginModal && firstLoginUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden flex flex-col">
+            <div className="bg-slate-900 text-white p-5 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Primer Inicio de Sesión
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Defina su contraseña personal definitiva
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                Hola <strong>{firstLoginUser.name}</strong> (@{firstLoginUser.username}). Por directiva de seguridad del Administrador, debes establecer una contraseña personal propia para habilitar tu acceso.
+              </div>
+
+              {firstLoginError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold">
+                  {firstLoginError}
+                </div>
+              )}
+
+              <form onSubmit={handleFirstLoginPasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nueva Contraseña * (Mínimo 4 caracteres)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Ingrese su nueva contraseña"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs font-mono outline-hidden focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Confirmar Nueva Contraseña *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repita su nueva contraseña"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs font-mono outline-hidden focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFirstLoginModal(false)}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Guardar y Acceder</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

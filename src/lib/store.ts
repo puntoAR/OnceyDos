@@ -213,6 +213,8 @@ export function saveUser(userData: {
   avatar?: string;
   isActive?: boolean;
   customModules?: AppModule[];
+  password?: string;
+  mustChangePasswordOnFirstLogin?: boolean;
 }): User {
   const users = getUsers();
   const cleanUsername = userData.username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
@@ -230,6 +232,11 @@ export function saveUser(userData: {
         avatar: userData.avatar || users[index].avatar,
         isActive: userData.isActive !== undefined ? userData.isActive : true,
         customModules: userData.customModules,
+        password: userData.password?.trim() ? userData.password.trim() : users[index].password,
+        mustChangePasswordOnFirstLogin:
+          userData.mustChangePasswordOnFirstLogin !== undefined
+            ? userData.mustChangePasswordOnFirstLogin
+            : users[index].mustChangePasswordOnFirstLogin,
       };
       users[index] = updated;
       safeSet(STORAGE_KEYS.USERS, users);
@@ -243,6 +250,8 @@ export function saveUser(userData: {
         action: 'MODIFICAR_USUARIO',
         details: `Usuario actualizado: ${updated.name} (@${updated.username}) - Rol: ${updated.role}${
           updated.customModules ? ' (Permisos personalizados: ' + updated.customModules.join(', ') + ')' : ''
+        }${userData.password?.trim() ? ' [Contraseña actualizada]' : ''}${
+          userData.mustChangePasswordOnFirstLogin ? ' [Exige cambio de clave en primer ingreso]' : ''
         }`,
         category: 'SEGURIDAD',
       });
@@ -262,6 +271,11 @@ export function saveUser(userData: {
     isActive: userData.isActive !== undefined ? userData.isActive : true,
     createdAt: new Date().toISOString(),
     customModules: userData.customModules,
+    password: userData.password?.trim() || '123456',
+    mustChangePasswordOnFirstLogin:
+      userData.mustChangePasswordOnFirstLogin !== undefined
+        ? userData.mustChangePasswordOnFirstLogin
+        : false,
   };
 
   users.push(newUser);
@@ -271,11 +285,32 @@ export function saveUser(userData: {
     action: 'ALTA_USUARIO',
     details: `Nuevo usuario creado: ${newUser.name} (@${newUser.username}) con rol ${newUser.role}${
       newUser.customModules ? ' (Permisos personalizados: ' + newUser.customModules.join(', ') + ')' : ''
-    }`,
+    }${newUser.mustChangePasswordOnFirstLogin ? ' [Exige cambio de clave en primer ingreso]' : ''}`,
     category: 'SEGURIDAD',
   });
 
   return newUser;
+}
+
+export function changeUserPassword(userId: string, newPassword: string): void {
+  const users = getUsers();
+  const index = users.findIndex((u) => u.id === userId);
+  if (index >= 0) {
+    users[index].password = newPassword.trim();
+    users[index].mustChangePasswordOnFirstLogin = false;
+    safeSet(STORAGE_KEYS.USERS, users);
+
+    const current = getCurrentUser();
+    if (current && current.id === userId) {
+      safeSet(STORAGE_KEYS.CURRENT_USER, users[index]);
+    }
+
+    addAuditLog({
+      action: 'CAMBIO_PASSWORD',
+      details: `El usuario ${users[index].name} (@${users[index].username}) actualizó su contraseña personal de acceso.`,
+      category: 'SEGURIDAD',
+    });
+  }
 }
 
 export function deleteUser(userId: string): { success: boolean; message: string } {

@@ -63,6 +63,8 @@ export const INITIAL_USERS: User[] = [
     name: 'Carlos Arrieta (Admin Sistema)',
     role: 'ADMIN_SISTEMA',
     email: 'sistemas@onceydos.com.ar',
+    password: '123456',
+    mustChangePasswordOnFirstLogin: false,
   },
   {
     id: 'u-2',
@@ -70,6 +72,8 @@ export const INITIAL_USERS: User[] = [
     name: 'Mariana Gerente (Administradora)',
     role: 'ADMIN',
     email: 'administracion@onceydos.com.ar',
+    password: '123456',
+    mustChangePasswordOnFirstLogin: false,
   },
   {
     id: 'u-3',
@@ -77,6 +81,8 @@ export const INITIAL_USERS: User[] = [
     name: 'Gonzalo Fernández (Técnico de Obra)',
     role: 'TECNICO',
     email: 'obras@onceydos.com.ar',
+    password: '123456',
+    mustChangePasswordOnFirstLogin: false,
   },
   {
     id: 'u-4',
@@ -84,6 +90,8 @@ export const INITIAL_USERS: User[] = [
     name: 'Martín Gómez (Mostrador / Caja)',
     role: 'CAJERO',
     email: 'caja@onceydos.com.ar',
+    password: '123456',
+    mustChangePasswordOnFirstLogin: false,
   },
 ];
 
