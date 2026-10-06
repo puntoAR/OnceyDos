@@ -316,3 +316,15 @@ export interface DevMessage {
   hasAttachment?: boolean;
   attachmentData?: any;
 }
+
+export interface UserChatMessage {
+  id: string;
+  senderId: string;
+  senderUsername: string;
+  senderName: string;
+  senderRole: UserRole;
+  recipientId: string; // 'GENERAL' para el canal de equipo o id de usuario para chat 1 a 1
+  recipientName?: string;
+  message: string;
+  timestamp: string;
+}

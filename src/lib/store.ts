@@ -19,6 +19,7 @@ import {
   UserRole,
   PaymentMethodType,
   SupplierPurchase,
+  UserChatMessage,
 } from '@/types';
 import {
   INITIAL_USERS,
@@ -33,6 +34,7 @@ import {
   DEFAULT_ROLE_PERMISSIONS,
   INITIAL_SALES,
   INITIAL_PURCHASES,
+  INITIAL_USER_MESSAGES,
 } from './seed/data';
 
 const STORAGE_KEYS = {
@@ -51,6 +53,7 @@ const STORAGE_KEYS = {
   AUDIT_LOGS: 'onceydos_audit_logs',
   ERROR_LOGS: 'onceydos_error_logs',
   DEV_MESSAGES: 'onceydos_dev_messages',
+  USER_MESSAGES: 'onceydos_user_messages',
   ROLE_PERMISSIONS: 'onceydos_role_permissions',
 };
 
@@ -130,6 +133,9 @@ export function initStore(): void {
         message: '¡Bienvenido al sistema Once y Dos! Estamos conectados para darte asistencia técnica directa.',
       },
     ]);
+  }
+  if (!localStorage.getItem(STORAGE_KEYS.USER_MESSAGES)) {
+    safeSet(STORAGE_KEYS.USER_MESSAGES, INITIAL_USER_MESSAGES);
   }
 }
 
@@ -1078,6 +1084,41 @@ export function sendDevMessage(message: string, attachmentData?: any): DevMessag
     });
     safeSet(STORAGE_KEYS.DEV_MESSAGES, updated);
   }, 1200);
+
+  return newMsg;
+}
+
+// --- CHAT INTERNO ENTRE USUARIOS ---
+export function getUserChatMessages(): UserChatMessage[] {
+  return safeGet<UserChatMessage[]>(STORAGE_KEYS.USER_MESSAGES, INITIAL_USER_MESSAGES);
+}
+
+export function sendUserChatMessage(recipientId: string, message: string): UserChatMessage {
+  const messages = getUserChatMessages();
+  const currentUser = getCurrentUser();
+  const users = getUsers();
+  const recipient = recipientId === 'GENERAL' ? null : users.find((u) => u.id === recipientId);
+
+  const newMsg: UserChatMessage = {
+    id: `umsg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    senderId: currentUser.id,
+    senderUsername: currentUser.username,
+    senderName: currentUser.name,
+    senderRole: currentUser.role,
+    recipientId: recipientId,
+    recipientName: recipient ? recipient.name : 'Canal General (Equipo)',
+    message: message.trim(),
+    timestamp: new Date().toISOString(),
+  };
+
+  messages.push(newMsg);
+  safeSet(STORAGE_KEYS.USER_MESSAGES, messages);
+
+  addAuditLog({
+    action: 'CHAT_INTERNO_ENVIADO',
+    details: `Mensaje interno enviado por ${currentUser.name} a ${newMsg.recipientName}: "${message.slice(0, 50)}..."`,
+    category: 'SISTEMA',
+  });
 
   return newMsg;
 }

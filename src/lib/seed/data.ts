@@ -1,4 +1,4 @@
-import { Product, Supplier, Client, User, FinancialObligation, SystemNotification, LicenseInfo, Quote, WorkOrder, RolePermissions, AppModule, UserRole, Sale, SupplierPurchase } from '@/types';
+import { Product, Supplier, Client, User, FinancialObligation, SystemNotification, LicenseInfo, Quote, WorkOrder, RolePermissions, AppModule, UserRole, Sale, SupplierPurchase, UserChatMessage } from '@/types';
 import { getProductPlaceholderSvg } from '../media';
 
 export const DEFAULT_ROLE_PERMISSIONS: RolePermissions[] = [
@@ -828,5 +828,41 @@ export const INITIAL_PURCHASES: SupplierPurchase[] = [
     total: 120000,
     status: 'PAGADA',
     notes: 'Pago en efectivo contra entrega de mercadería por parte del chofer de reparto.',
+  },
+];
+
+export const INITIAL_USER_MESSAGES: UserChatMessage[] = [
+  {
+    id: 'umsg-1',
+    senderId: 'u-3',
+    senderUsername: 'tecnico',
+    senderName: 'Gonzalo Fernández',
+    senderRole: 'TECNICO',
+    recipientId: 'GENERAL',
+    recipientName: 'Canal General (Equipo)',
+    message: 'Hola equipo, ¿tenemos en depósito bobinas de cable unipolar 2.5mm Prysmian para la obra de Ituzaingó?',
+    timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+  },
+  {
+    id: 'umsg-2',
+    senderId: 'u-4',
+    senderUsername: 'cajero',
+    senderName: 'Martín Gómez',
+    senderRole: 'CAJERO',
+    recipientId: 'GENERAL',
+    recipientName: 'Canal General (Equipo)',
+    message: 'Hola Gonzalo! Sí, en mostrador verifiqué y quedan 4 rollos en el pasillo B. Ya te los reservo.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 95).toISOString(),
+  },
+  {
+    id: 'umsg-3',
+    senderId: 'u-2',
+    senderUsername: 'admin',
+    senderName: 'Mariana Gerente',
+    senderRole: 'ADMIN',
+    recipientId: 'GENERAL',
+    recipientName: 'Canal General (Equipo)',
+    message: 'Aviso general: Acaba de ingresar el pedido de Bremen Tools. Por favor cotejar remitos contra la orden de compra antes del cierre.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
   },
 ];
