@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Boxes,
@@ -17,8 +17,9 @@ import {
   X,
   ShieldCheck,
   Scale,
+  LogOut,
 } from 'lucide-react';
-import { getCurrentUser, getNotifications, canUserAccessModule } from '@/lib/store';
+import { getCurrentUser, logoutUser, getNotifications, canUserAccessModule } from '@/lib/store';
 import { User, AppModule } from '@/types';
 
 interface Props {
@@ -28,6 +29,7 @@ interface Props {
 
 export function Sidebar({ isOpen, onClose }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeAlerts, setActiveAlerts] = useState<number>(0);
 
@@ -156,6 +158,23 @@ export function Sidebar({ isOpen, onClose }: Props) {
             );
           })}
         </nav>
+
+        {/* Botón Cerrar Sesión en Sidebar */}
+        {currentUser && (
+          <div className="px-4 py-2 border-t border-slate-800">
+            <button
+              onClick={() => {
+                onClose();
+                logoutUser();
+                router.replace('/login');
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-red-500/20 text-slate-300 hover:text-red-400 font-bold text-xs transition-colors border border-slate-700/60"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        )}
 
         {/* Footer con branding "powered by puntoAR" */}
         <div className="p-4 border-t border-slate-800 bg-slate-950/60">

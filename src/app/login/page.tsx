@@ -4,17 +4,18 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { User as UserIcon, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, KeyRound, CheckCircle2 } from 'lucide-react';
-import { setCurrentUser, getUsers, changeUserPassword } from '@/lib/store';
+import { setCurrentUser, getUsers, changeUserPassword, getCurrentUser, logoutUser } from '@/lib/store';
 import { User } from '@/types';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('admin_sistema');
-  const [password, setPassword] = useState('123456');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [activeSessionUser, setActiveSessionUser] = useState<User | null>(null);
 
   // Estado para modal de cambio obligatorio de contraseña en primer ingreso
   const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
@@ -25,6 +26,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     setAvailableUsers(getUsers());
+    setActiveSessionUser(getCurrentUser());
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -117,7 +119,7 @@ export default function LoginPage() {
 
   const handleQuickFill = (u: User) => {
     setUsername(u.username);
-    setPassword(u.password || '123456');
+    setPassword('');
     setError('');
   };
 
@@ -183,6 +185,40 @@ export default function LoginPage() {
             Ingreso al sistema de gestión
           </h2>
         </div>
+
+        {/* Notificación de sesión previa si ya hay alguien conectado */}
+        {activeSessionUser && (
+          <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+            <div className="truncate">
+              <span className="text-slate-500 block text-[10px] font-semibold uppercase">Sesión activa previa</span>
+              <span className="font-bold text-slate-800">{activeSessionUser.name}</span>
+              <span className="text-[10px] text-amber-800 ml-1 font-bold">({activeSessionUser.role})</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeSessionUser.role === 'TECNICO') router.push('/stock');
+                  else if (activeSessionUser.role === 'CAJERO') router.push('/pos');
+                  else router.push('/');
+                }}
+                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[11px] shadow-xs transition-colors"
+              >
+                Continuar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  logoutUser();
+                  setActiveSessionUser(null);
+                }}
+                className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-[11px] transition-colors"
+              >
+                Salir
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold text-center">

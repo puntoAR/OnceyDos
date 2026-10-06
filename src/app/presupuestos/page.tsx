@@ -272,8 +272,8 @@ export default function PresupuestosPage() {
       id: `quote-${Date.now()}`,
       quoteNumber,
       date: new Date().toISOString().slice(0, 10),
-      technicianId: technician.id,
-      technicianName: technician.name,
+      technicianId: technician?.id || 'usr-tecnico',
+      technicianName: technician?.name || 'Técnico de Obra',
       clientId: formData.clientId || 'cli-generic',
       clientName: formData.clientName || 'Cliente Particular',
       clientPhone: formData.clientPhone,
@@ -294,7 +294,7 @@ export default function PresupuestosPage() {
       validityDays: formData.validityDays,
       status,
       adminApprovedAt: status === 'APROBADO_ADMIN' ? new Date().toISOString() : undefined,
-      adminApprovedByName: status === 'APROBADO_ADMIN' ? technician.name : undefined,
+      adminApprovedByName: status === 'APROBADO_ADMIN' ? technician?.name : undefined,
     };
 
     saveQuote(newQuote);
@@ -587,7 +587,7 @@ export default function PresupuestosPage() {
                   <span>Nuevo Presupuesto de Obra / Reparación In Situ</span>
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Técnico relevador: <strong>{technician.name}</strong>
+                  Técnico relevador: <strong>{technician?.name || 'Técnico'}</strong>
                 </p>
               </div>
               <button

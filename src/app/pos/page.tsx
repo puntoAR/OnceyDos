@@ -150,8 +150,8 @@ export default function POSPage() {
     };
 
     const newSale = registerSale({
-      cashierId: cashier.id,
-      cashierName: cashier.name,
+      cashierId: cashier?.id || 'cajero-pos',
+      cashierName: cashier?.name || 'Cajero de Turno',
       clientId: client?.id,
       clientName,
       items: cart,
@@ -186,7 +186,7 @@ export default function POSPage() {
             <span>Punto de Venta Mostrador (POS)</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Cajero en turno: <strong>{cashier.name}</strong> &bull; Cobro con efectivo, cheque, Mercado Pago, tarjetas y cuenta corriente.
+            Cajero en turno: <strong>{cashier?.name || 'Cajero'}</strong> &bull; Cobro con efectivo, cheque, Mercado Pago, tarjetas y cuenta corriente.
           </p>
         </div>
 

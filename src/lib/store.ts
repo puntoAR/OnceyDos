@@ -90,7 +90,11 @@ export function initStore(): void {
   const currentUsers = safeGet<User[]>(STORAGE_KEYS.USERS, []);
   if (!currentUsers.some((u) => u.role === 'ADMIN_SISTEMA')) {
     safeSet(STORAGE_KEYS.USERS, INITIAL_USERS);
-    safeSet(STORAGE_KEYS.CURRENT_USER, INITIAL_USERS[0]);
+  }
+
+  // Limpiar cualquier residuo de autologin legacy en localStorage
+  if (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.ROLE_PERMISSIONS)) {
@@ -192,17 +196,48 @@ export function canUserAccessModule(user: User | null, module: AppModule): boole
 }
 
 // --- USUARIO ACTUAL Y SESIÓN ---
-export function getCurrentUser(): User {
-  return safeGet<User>(STORAGE_KEYS.CURRENT_USER, INITIAL_USERS[0]);
+export function getCurrentUser(): User | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export function setCurrentUser(user: User): void {
-  safeSet(STORAGE_KEYS.CURRENT_USER, user);
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+  } catch (err) {
+    console.error('Error guardando usuario en sesión:', err);
+  }
   addAuditLog({
     action: 'CAMBIO_SESION',
     details: `Inicio de sesión como ${user.name} (${user.role})`,
     category: 'SEGURIDAD',
   });
+  window.dispatchEvent(new Event('onceydos_storage_update'));
+}
+
+export function logoutUser(): void {
+  const current = getCurrentUser();
+  if (current) {
+    addAuditLog({
+      action: 'CIERRE_SESION',
+      details: `Cierre de sesión de ${current.name} (${current.role})`,
+      category: 'SEGURIDAD',
+    });
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch {}
+    window.dispatchEvent(new Event('onceydos_storage_update'));
+  }
 }
 
 export function getUsers(): User[] {
@@ -248,8 +283,8 @@ export function saveUser(userData: {
       safeSet(STORAGE_KEYS.USERS, users);
 
       const current = getCurrentUser();
-      if (current.id === updated.id) {
-        safeSet(STORAGE_KEYS.CURRENT_USER, updated);
+      if (current && current.id === updated.id) {
+        setCurrentUser(updated);
       }
 
       addAuditLog({
@@ -308,7 +343,7 @@ export function changeUserPassword(userId: string, newPassword: string): void {
 
     const current = getCurrentUser();
     if (current && current.id === userId) {
-      safeSet(STORAGE_KEYS.CURRENT_USER, users[index]);
+      setCurrentUser(users[index]);
     }
 
     addAuditLog({
@@ -327,7 +362,7 @@ export function deleteUser(userId: string): { success: boolean; message: string 
   }
 
   const currentUser = getCurrentUser();
-  if (currentUser.id === userId) {
+  if (currentUser && currentUser.id === userId) {
     return { success: false, message: 'No puedes eliminar la cuenta actualmente en uso.' };
   }
 
@@ -531,7 +566,7 @@ export function approveQuoteByAdmin(quoteId: string, adminUser?: User): Quote {
   if (qIndex < 0) throw new Error('Presupuesto no encontrado');
 
   const user = adminUser || getCurrentUser();
-  if (!isUserAdmin(user)) {
+  if (!user || !isUserAdmin(user)) {
     throw new Error('Solo los administradores pueden aprobar presupuestos.');
   }
 
@@ -691,7 +726,7 @@ export function confirmWorkOrderCompletionByUser(
 
   order.status = 'FINALIZADA_USUARIO';
   order.userCompletedAt = now;
-  order.userCompletedByName = user.name;
+  order.userCompletedByName = user?.name || 'Usuario';
   if (completionNotes) {
     order.completionNotes = completionNotes;
   }
@@ -704,12 +739,12 @@ export function confirmWorkOrderCompletionByUser(
 
   addAuditLog({
     action: 'CONFIRMAR_FINALIZACION_TAREA_USUARIO',
-    details: `El usuario ${user.name} confirmó la finalización de la tarea en la orden ${order.orderNumber} (${order.title}). Saldo restante adeudado: $${order.remainingBalance.toLocaleString('es-AR')}`,
+    details: `El usuario ${user?.name || 'Usuario'} confirmó la finalización de la tarea en la orden ${order.orderNumber} (${order.title}). Saldo restante adeudado: $${order.remainingBalance.toLocaleString('es-AR')}`,
     category: 'PRESUPUESTO',
   });
 
   addSystemNotification({
-    title: `TAREA FINALIZADA: Orden ${order.orderNumber} por ${user.name}`,
+    title: `TAREA FINALIZADA: Orden ${order.orderNumber} por ${user?.name || 'Técnico'}`,
     message: `La tarea '${order.title}' fue completada por el usuario/técnico. Saldo restante adeudado por facturar: $${order.remainingBalance.toLocaleString('es-AR')}. Pendiente de aprobación administrativa de obra.`,
     type: 'COBRO_OT',
     priority: 'ALTA',
@@ -730,7 +765,7 @@ export function adminApproveCompletionAndInvoice(
   if (index < 0) throw new Error('Orden de trabajo no encontrada');
 
   const user = getCurrentUser();
-  if (!isUserAdmin(user)) {
+  if (!user || !isUserAdmin(user)) {
     throw new Error('Solo los administradores pueden aprobar la finalización de obra y generar la factura.');
   }
 
@@ -912,8 +947,8 @@ export function resolveObligationWithEvidence(
   obligations[index].status = 'RESUELTO';
   obligations[index].resolutionEvidence = {
     resolvedAt: now,
-    resolvedByUserId: user.id,
-    resolvedByUserName: user.name,
+    resolvedByUserId: user?.id || 'sys-admin',
+    resolvedByUserName: user?.name || 'Administrador',
     operationNumber: operationNumber.trim(),
     notes,
     proofUrl,
@@ -1018,9 +1053,9 @@ export function addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'use
     ...entry,
     id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     timestamp: new Date().toISOString(),
-    userId: user.id,
-    userName: user.name,
-    role: user.role,
+    userId: user?.id || 'sys',
+    userName: user?.name || 'Sistema',
+    role: user?.role || 'ADMIN_SISTEMA',
   };
   logs.unshift(newEntry);
   // Mantener últimos 1000 registros
@@ -1064,7 +1099,7 @@ export function sendDevMessage(message: string, attachmentData?: any): DevMessag
     id: `msg-${Date.now()}`,
     timestamp: new Date().toISOString(),
     sender: 'USER',
-    senderName: user.name,
+    senderName: user ? user.name : 'Usuario',
     message,
     hasAttachment: !!attachmentData,
     attachmentData,
@@ -1080,7 +1115,7 @@ export function sendDevMessage(message: string, attachmentData?: any): DevMessag
       timestamp: new Date().toISOString(),
       sender: 'DEV',
       senderName: 'puntoAR Dev Team',
-      message: `Hola ${user.name}, recibimos tu consulta sobre: "${message.slice(0, 60)}...". Nuestro equipo técnico está revisando los registros y te responderá a la brevedad. Gracias por comunicarte con soporte de puntoAR.`,
+      message: `Hola ${user ? user.name : 'Usuario'}, recibimos tu consulta sobre: "${message.slice(0, 60)}...". Nuestro equipo técnico está revisando los registros y te responderá a la brevedad. Gracias por comunicarte con soporte de puntoAR.`,
     });
     safeSet(STORAGE_KEYS.DEV_MESSAGES, updated);
   }, 1200);
@@ -1096,6 +1131,9 @@ export function getUserChatMessages(): UserChatMessage[] {
 export function sendUserChatMessage(recipientId: string, message: string): UserChatMessage {
   const messages = getUserChatMessages();
   const currentUser = getCurrentUser();
+  if (!currentUser) {
+    throw new Error('Debe iniciar sesión para enviar mensajes');
+  }
   const users = getUsers();
   const recipient = recipientId === 'GENERAL' ? null : users.find((u) => u.id === recipientId);
 

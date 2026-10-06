@@ -76,7 +76,7 @@ export function DevChatModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
   // Colegas para mensajes directos (excluyendo al usuario logueado)
-  const peerUsers = allUsers.filter((u) => u.id !== currentUser.id);
+  const peerUsers = currentUser ? allUsers.filter((u) => u.id !== currentUser.id) : allUsers;
   const filteredPeers = peerUsers.filter(
     (u) =>
       !userSearch ||
@@ -92,6 +92,7 @@ export function DevChatModal({ isOpen, onClose }: Props) {
     if (teamRecipientId === 'GENERAL') {
       return m.recipientId === 'GENERAL';
     }
+    if (!currentUser) return false;
     // Conversación privada 1 a 1 entre currentUser y activePeer
     return (
       (m.senderId === currentUser.id && m.recipientId === teamRecipientId) ||
@@ -120,7 +121,7 @@ export function DevChatModal({ isOpen, onClose }: Props) {
 
   const handleAttachDiagnostics = () => {
     const diagnostic = `Diagnóstico del Sistema:
-Usuario: ${currentUser.name} (${currentUser.role})
+Usuario: ${currentUser?.name || 'Usuario'} (${currentUser?.role || 'SISTEMA'})
 Navegador: ${navigator.userAgent}
 Fecha: ${new Date().toLocaleString('es-AR')}
 Memoria/Almacenamiento: OK`;
@@ -213,7 +214,7 @@ Memoria/Almacenamiento: OK`;
 
           <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400">
             <span>Puesto:</span>
-            <span className="font-bold text-amber-400">{currentUser.name.split(' ')[0]}</span>
+            <span className="font-bold text-amber-400">{currentUser?.name.split(' ')[0] || 'Usuario'}</span>
           </div>
         </div>
 
@@ -322,11 +323,13 @@ Memoria/Almacenamiento: OK`;
 
                 {filteredPeers.map((u) => {
                   const isSelected = teamRecipientId === u.id;
-                  const directCount = teamMessages.filter(
-                    (m) =>
-                      (m.senderId === currentUser.id && m.recipientId === u.id) ||
-                      (m.senderId === u.id && m.recipientId === currentUser.id)
-                  ).length;
+                  const directCount = currentUser
+                    ? teamMessages.filter(
+                        (m) =>
+                          (m.senderId === currentUser.id && m.recipientId === u.id) ||
+                          (m.senderId === u.id && m.recipientId === currentUser.id)
+                      ).length
+                    : 0;
 
                   return (
                     <button
@@ -444,7 +447,7 @@ Memoria/Almacenamiento: OK`;
                   </div>
                 ) : (
                   displayedTeamMessages.map((msg) => {
-                    const isMe = msg.senderId === currentUser.id;
+                    const isMe = currentUser ? msg.senderId === currentUser.id : false;
                     return (
                       <div
                         key={msg.id}

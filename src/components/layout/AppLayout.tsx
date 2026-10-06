@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { initStore, getLicense, getCurrentUser, canUserAccessModule } from '@/lib/store';
@@ -17,7 +17,9 @@ export function AppLayout({ children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [license, setLicense] = useState<LicenseInfo | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const refreshData = () => {
     initStore();
@@ -27,6 +29,7 @@ export function AppLayout({ children }: Props) {
 
   useEffect(() => {
     refreshData();
+    setIsMounted(true);
     window.addEventListener('onceydos_storage_update', refreshData);
     return () => window.removeEventListener('onceydos_storage_update', refreshData);
   }, []);
@@ -34,8 +37,29 @@ export function AppLayout({ children }: Props) {
   // La pantalla de login y el portal público de presupuesto para clientes son públicos
   const isPublicPage = pathname === '/login' || pathname.startsWith('/presupuesto/');
 
+  // Si no es página pública y no hay usuario logueado, redirigir sí o sí a /login
+  useEffect(() => {
+    if (isMounted && !isPublicPage && !currentUser) {
+      router.replace('/login');
+    }
+  }, [isMounted, isPublicPage, currentUser, router]);
+
   if (isPublicPage) {
     return <>{children}</>;
+  }
+
+  // Si aún no montó o no está logueado, bloquear interfaz y mostrar pantalla de redirección
+  if (!isMounted || !currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-white text-xs font-semibold tracking-wider uppercase">
+            Autenticación Requerida &bull; Redirigiendo al Login...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const isExpired = license && license.status === 'EXPIRED';
@@ -56,7 +80,7 @@ export function AppLayout({ children }: Props) {
   };
 
   const currentModule = getModuleForPath(pathname);
-  const isAuthorized = currentUser && currentModule ? canUserAccessModule(currentUser, currentModule) : true;
+  const isAuthorized = currentModule ? canUserAccessModule(currentUser, currentModule) : true;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

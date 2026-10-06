@@ -104,7 +104,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] sm:text-xs font-bold border border-amber-400/30 mb-1.5 sm:mb-2">
-                <span>Puesto Activo: {user.name} ({user.role})</span>
+                <span>Puesto Activo: {user?.name || 'Usuario'} ({user?.role || 'SISTEMA'})</span>
               </div>
               <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white">
                 Ferretería 11 y 2 &bull; Panel Operativo

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Bell,
   MessageSquare,
@@ -12,8 +13,10 @@ import {
   ChevronDown,
   Menu,
   AlertTriangle,
+  LogOut,
+  UserCheck,
 } from 'lucide-react';
-import { getCurrentUser, setCurrentUser, getUsers, getNotifications, getLicense, canUserAccessModule } from '@/lib/store';
+import { getCurrentUser, logoutUser, getUsers, getNotifications, getLicense, canUserAccessModule } from '@/lib/store';
 import { User, SystemNotification, LicenseInfo } from '@/types';
 import { AboutModal } from '../dev-support/AboutModal';
 import { DevChatModal } from '../dev-support/DevChatModal';
@@ -23,6 +26,7 @@ interface Props {
 }
 
 export function Navbar({ onToggleSidebar }: Props) {
+  const router = useRouter();
   const [currentUser, setCurrUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
@@ -161,58 +165,57 @@ export function Navbar({ onToggleSidebar }: Props) {
               </button>
 
               {showRoleMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-4 py-2 border-b border-slate-100">
-                    <p className="text-xs text-slate-400 font-medium">Cambiar Rol / Puesto Activo:</p>
-                  </div>
-                  {users.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => {
-                        setCurrentUser(u);
-                        setCurrUser(u);
-                        setShowRoleMenu(false);
-                      }}
-                      className={`w-full px-4 py-2.5 text-left text-xs flex items-center justify-between hover:bg-amber-50 transition-colors ${
-                        currentUser?.id === u.id ? 'bg-amber-50/70 font-bold text-amber-900' : 'text-slate-700'
-                      }`}
-                    >
-                      <div>
-                        <span className="block">{u.name}</span>
-                        <span className="text-[10px] text-slate-400">{u.email}</span>
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  {currentUser && (
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Sesión Activa</p>
+                      <p className="text-xs font-bold text-slate-900 mt-0.5">{currentUser.name}</p>
+                      <p className="text-[11px] text-slate-500 font-mono">@{currentUser.username}</p>
+                      <div className="mt-1.5 inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200">
+                        Rol: {currentUser.role}
                       </div>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                          u.role === 'ADMIN_SISTEMA'
-                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                            : u.role === 'ADMIN'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                            : u.role === 'TECNICO'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            : 'bg-sky-100 text-sky-800 border border-sky-200'
-                        }`}
-                      >
-                        {u.role === 'ADMIN_SISTEMA' ? 'ADMIN SISTEMA' : u.role}
-                      </span>
-                    </button>
-                  ))}
-                  <div className="pt-2 border-t border-slate-100 px-4 space-y-1.5">
+                    </div>
+                  )}
+
+                  <div className="p-2 space-y-1">
                     {canUserAccessModule(currentUser, 'AUDITORIA') && (
                       <Link
                         href="/auditoria?tab=usuarios"
                         onClick={() => setShowRoleMenu(false)}
-                        className="block text-center py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-colors border border-amber-200"
+                        className="flex items-center gap-2.5 w-full py-2 px-3 rounded-xl hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors"
                       >
-                        + Alta & Gestión de Usuarios
+                        <UserIcon className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Alta & Gestión de Usuarios</span>
                       </Link>
                     )}
-                    <Link
-                      href="/login"
-                      onClick={() => setShowRoleMenu(false)}
-                      className="block text-center py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRoleMenu(false);
+                        logoutUser();
+                        router.replace('/login');
+                      }}
+                      className="flex items-center gap-2.5 w-full py-2 px-3 rounded-xl hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors"
                     >
-                      Ir a Pantalla de Login
-                    </Link>
+                      <UserCheck className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Cambiar de Cuenta</span>
+                    </button>
+
+                    <div className="pt-1 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRoleMenu(false);
+                          logoutUser();
+                          router.replace('/login');
+                        }}
+                        className="flex items-center gap-2.5 w-full py-2 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Cerrar Sesión</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
