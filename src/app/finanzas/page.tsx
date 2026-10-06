@@ -127,23 +127,23 @@ export default function FinanzasPage() {
       </div>
 
       {/* Banner de Acceso a Balance Consolidado */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-50 to-blue-500/10 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-xs">
-            <Scale className="w-5 h-5" />
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-50 to-blue-500/10 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <Scale className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <h4 className="font-bold text-xs text-slate-900">
-              ¿Deseas consultar el Balance Consolidado de Ingresos vs. Egresos?
+          <div className="min-w-0">
+            <h4 className="font-bold text-xs text-slate-900 leading-tight">
+              ¿Deseas consultar el Balance Consolidado?
             </h4>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 hidden sm:block">
               Analiza ventas por medio de pago (efectivo, cheques, cta cte, tarjetas) y compras a proveedores filtrando mensualmente.
             </p>
           </div>
         </div>
         <Link
           href="/balance"
-          className="py-2 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shrink-0 shadow-xs"
+          className="w-full sm:w-auto py-2 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shrink-0 shadow-xs text-center"
         >
           <span>Ir a Balance & Flujo de Caja &rarr;</span>
         </Link>

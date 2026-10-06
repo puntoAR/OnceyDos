@@ -82,14 +82,18 @@ export default function DashboardPage() {
   };
 
   const urgentAlerts = activeNotifications.filter((n) => n.requiresEvidence || n.priority === 'URGENTE');
+  const urgentAlert = urgentAlerts[0];
+  const urgentObligation = urgentAlert?.obligationId
+    ? pendingObligations.find((o) => o.id === urgentAlert.obligationId)
+    : null;
 
   return (
     <div className="space-y-6">
       {/* Banner de Bienvenida y Estado */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-5 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
           <div className="flex items-start gap-4">
             <div className="w-16 h-14 rounded-2xl bg-white p-1 border border-slate-700 shadow-xl shrink-0 overflow-hidden hidden sm:flex items-center justify-center">
               <img
@@ -99,41 +103,81 @@ export default function DashboardPage() {
               />
             </div>
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30 mb-2">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] sm:text-xs font-bold border border-amber-400/30 mb-1.5 sm:mb-2">
                 <span>Puesto Activo: {user.name} ({user.role})</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white">
                 Ferretería 11 y 2 &bull; Panel Operativo
               </h1>
-              <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
+              <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl hidden sm:block">
                 Sistema integral de control de stock (10k insumos), venta mostrador, presupuestos in situ y órdenes de trabajo.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Link
               href="/pos"
-              className="flex items-center space-x-2 py-3 px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition-all transform active:scale-95"
+              className="flex items-center justify-center space-x-1.5 sm:space-x-2 py-2.5 sm:py-3 px-3 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition-all text-center"
             >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Venta Mostrador (POS)</span>
+              <ShoppingCart className="w-4 h-4 shrink-0" />
+              <span className="truncate">POS Mostrador</span>
             </Link>
             <Link
               href="/presupuestos"
-              className="flex items-center space-x-2 py-3 px-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm transition-all"
+              className="flex items-center justify-center space-x-1.5 sm:space-x-2 py-2.5 sm:py-3 px-3 sm:px-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm transition-all text-center"
             >
-              <Smartphone className="w-4 h-4 text-amber-400" />
-              <span>Presupuesto In Situ</span>
+              <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="truncate">Presupuesto</span>
             </Link>
           </div>
         </div>
       </div>
 
       {/* ALERTA OBLIGATORIA DESTACADA: Cheques por vencer o deudas de clientes */}
-      {urgentAlerts.length > 0 && (
-        <div className="bg-red-500/10 border-2 border-red-500/40 rounded-2xl p-5 shadow-lg animate-in slide-in-from-top-2 duration-200">
-          <div className="flex items-start justify-between gap-4">
+      {urgentAlerts.length > 0 && urgentAlert && (
+        <div className="bg-red-500/10 border-2 border-red-500/40 rounded-2xl p-3.5 sm:p-5 shadow-lg animate-in slide-in-from-top-2 duration-200">
+          {/* VISTA MÓVIL (COMPACTA, MINIMALISTA Y SIN SOBRECARGA) */}
+          <div className="sm:hidden space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <ShieldAlert className="w-4 h-4 animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-600 text-white leading-none">
+                    Alerta ({urgentAlerts.length})
+                  </span>
+                  <h3 className="font-bold text-slate-900 text-xs truncate leading-tight mt-0.5">
+                    {urgentAlert.title.replace(/^ALERTA BANCARIA:\s*/i, '')}
+                  </h3>
+                </div>
+              </div>
+              {urgentObligation && (
+                <span className="font-mono font-black text-xs text-red-700 bg-red-100/90 px-2 py-0.5 rounded shrink-0">
+                  ${urgentObligation.amount.toLocaleString('es-AR')}
+                </span>
+              )}
+            </div>
+
+            {urgentObligation && (
+              <div className="flex items-center justify-between text-[11px] text-slate-600 bg-white/70 px-2.5 py-1 rounded-lg border border-red-200/50">
+                <span className="truncate font-medium">{urgentObligation.bank || urgentObligation.entityName}</span>
+                <span className="text-red-700 font-bold shrink-0 ml-2">Vence: {urgentObligation.dueDate}</span>
+              </div>
+            )}
+
+            <button
+              onClick={() => handleResolveAlert(urgentAlert)}
+              className="w-full py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 transition-all flex items-center justify-center gap-1.5 active:scale-98"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Confirmar Transacción</span>
+            </button>
+          </div>
+
+          {/* VISTA DESKTOP (DETALLADA CON TEXTO COMPLETO) */}
+          <div className="hidden sm:flex items-start justify-between gap-4">
             <div className="flex items-start space-x-3">
               <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-red-600/30">
                 <ShieldAlert className="w-6 h-6 animate-pulse" />
@@ -143,16 +187,16 @@ export default function DashboardPage() {
                   Atención Bancaria Requerida ({urgentAlerts.length})
                 </span>
                 <h3 className="font-bold text-slate-900 text-base">
-                  {urgentAlerts[0].title}
+                  {urgentAlert.title}
                 </h3>
                 <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                  {urgentAlerts[0].message}
+                  {urgentAlert.message}
                 </p>
               </div>
             </div>
 
             <button
-              onClick={() => handleResolveAlert(urgentAlerts[0])}
+              onClick={() => handleResolveAlert(urgentAlert)}
               className="shrink-0 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 transition-all flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />

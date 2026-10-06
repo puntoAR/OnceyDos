@@ -51,7 +51,7 @@ export function Navbar({ onToggleSidebar }: Props) {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo y Botón móvil */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
             <button
               onClick={onToggleSidebar}
               className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
@@ -59,8 +59,8 @@ export function Navbar({ onToggleSidebar }: Props) {
               <Menu className="w-5 h-5" />
             </button>
 
-            <Link href="/" className="flex items-center space-x-3 group">
-              <div className="relative w-12 h-10 rounded-xl overflow-hidden bg-white border border-slate-200/90 shadow-xs flex items-center justify-center group-hover:scale-105 transition-transform p-0.5">
+            <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
+              <div className="relative w-10 sm:w-12 h-9 sm:h-10 rounded-xl overflow-hidden bg-white border border-slate-200/90 shadow-xs flex items-center justify-center group-hover:scale-105 transition-transform p-0.5 shrink-0">
                 <Image
                   src="/images/logo-11y2.png"
                   alt="Logo Ferretería 11 y 2"
@@ -70,10 +70,10 @@ export function Navbar({ onToggleSidebar }: Props) {
                 />
               </div>
               <div>
-                <span className="font-black text-slate-900 text-base sm:text-lg tracking-tight block leading-none">
+                <span className="font-black text-slate-900 text-sm sm:text-lg tracking-tight block leading-none whitespace-nowrap">
                   Ferretería 11 y 2
                 </span>
-                <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider block">
+                <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider hidden sm:block">
                   Electricidad &bull; Gestión Integral
                 </span>
               </div>
@@ -138,7 +138,7 @@ export function Navbar({ onToggleSidebar }: Props) {
             {/* Acerca de */}
             <button
               onClick={() => setShowAbout(true)}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              className="hidden sm:flex p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
               title="Acerca del sistema Once y Dos"
             >
               <Info className="w-5 h-5" />

@@ -92,46 +92,58 @@ export default function AlertasPage() {
             return (
               <div
                 key={notif.id}
-                className="bg-white rounded-3xl p-5 border-2 border-red-500/30 shadow-soft-card flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border-2 border-red-500/30 shadow-soft-card flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4"
               >
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                    <ShieldAlert className="w-6 h-6 animate-pulse" />
+                <div className="flex items-start space-x-3 sm:space-x-4">
+                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                    <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                      <span className="px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-red-600 text-white">
                         {notif.type.replace('_', ' ')}
                       </span>
                       {notif.requiresEvidence && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                        <span className="px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
                           REQUIERE CONFIRMACIÓN
                         </span>
                       )}
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[10px] sm:text-[11px] text-slate-400">
                         {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
 
-                    <h3 className="font-bold text-base text-slate-900 leading-snug">{notif.title}</h3>
-                    <p className="text-xs text-slate-600 mt-1 max-w-xl leading-relaxed">{notif.message}</p>
+                    <h3 className="font-bold text-sm sm:text-base text-slate-900 leading-snug">{notif.title}</h3>
+                    <p className="text-xs text-slate-600 mt-1 max-w-xl leading-relaxed hidden sm:block">{notif.message}</p>
 
                     {obl && (
-                      <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-700 mt-2 pt-2 border-t border-slate-100">
-                        <span>Monto: <strong className="font-mono text-red-700">${obl.amount.toLocaleString('es-AR')}</strong></span>
-                        <span>Vence: <strong className="text-slate-900">{obl.dueDate}</strong></span>
-                        {obl.bank && <span>Banco: {obl.bank}</span>}
-                        {obl.checkNumber && <span>Cheque N°: {obl.checkNumber}</span>}
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs font-semibold text-slate-700 mt-2 pt-2 border-t border-slate-100">
+                        <span className="bg-red-50 text-red-800 px-2 py-0.5 rounded text-[11px] sm:text-xs">
+                          Monto: <strong className="font-mono text-red-700">${obl.amount.toLocaleString('es-AR')}</strong>
+                        </span>
+                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] sm:text-xs">
+                          Vence: <strong className="text-slate-900">{obl.dueDate}</strong>
+                        </span>
+                        {obl.bank && (
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] sm:text-xs">
+                            Banco: {obl.bank}
+                          </span>
+                        )}
+                        {obl.checkNumber && (
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] sm:text-xs font-mono">
+                            N° {obl.checkNumber}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto mt-2 md:mt-0">
+                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto mt-1 md:mt-0">
                   {notif.requiresEvidence ? (
                     <button
                       onClick={() => handleResolveClick(notif)}
-                      className="w-full md:w-auto py-3 px-5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 flex items-center justify-center gap-2 transition-all"
+                      className="w-full md:w-auto py-2.5 sm:py-3 px-4 sm:px-5 rounded-xl sm:rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 flex items-center justify-center gap-2 transition-all active:scale-98"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Confirmar Transacción</span>
@@ -139,7 +151,7 @@ export default function AlertasPage() {
                   ) : (
                     <button
                       onClick={() => handleDismissSimple(notif.id)}
-                      className="w-full md:w-auto py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors text-center"
+                      className="w-full md:w-auto py-2 sm:py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors text-center"
                     >
                       Marcar como leída
                     </button>
