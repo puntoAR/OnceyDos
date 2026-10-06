@@ -9,8 +9,8 @@ import { User } from '@/types';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('jroman');
+  const [password, setPassword] = useState('1234');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -91,6 +91,11 @@ export default function LoginPage() {
       return;
     }
 
+    if (newPassword.trim() === '1234') {
+      setFirstLoginError('Por seguridad, la nueva contraseña no puede ser la clave provisoria temporal (1234).');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setFirstLoginError('Las contraseñas no coinciden. Verifíquelas.');
       return;
@@ -119,7 +124,7 @@ export default function LoginPage() {
 
   const handleQuickFill = (u: User) => {
     setUsername(u.username);
-    setPassword('');
+    setPassword(u.password || '123456');
     setError('');
   };
 
@@ -340,7 +345,7 @@ export default function LoginPage() {
 
             <div className="p-6 space-y-4">
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
-                Hola <strong>{firstLoginUser.name}</strong> (@{firstLoginUser.username}). Por directiva de seguridad del Administrador, debes establecer una contraseña personal propia para habilitar tu acceso.
+                Hola <strong>{firstLoginUser.name}</strong> (@{firstLoginUser.username}). Tu usuario posee nivel de <strong>{firstLoginUser.role === 'ADMIN_SISTEMA' ? 'Administrador del Sistema' : firstLoginUser.role}</strong>. Como ingresaste con la contraseña temporal inicial (<code className="font-mono font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">1234</code>), el sistema requiere que definas tu contraseña personal definitiva antes de continuar.
               </div>
 
               {firstLoginError && (

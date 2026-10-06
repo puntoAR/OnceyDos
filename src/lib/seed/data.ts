@@ -58,6 +58,16 @@ export const DEFAULT_ROLE_PERMISSIONS: RolePermissions[] = [
 
 export const INITIAL_USERS: User[] = [
   {
+    id: 'u-jroman',
+    username: 'jroman',
+    name: 'J. Román (Admin Sistema)',
+    role: 'ADMIN_SISTEMA',
+    email: 'jroman@onceydos.com.ar',
+    password: '1234',
+    mustChangePasswordOnFirstLogin: true,
+    isActive: true,
+  },
+  {
     id: 'u-1',
     username: 'admin_sistema',
     name: 'Carlos Arrieta (Admin Sistema)',

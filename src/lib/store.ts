@@ -86,10 +86,19 @@ export function initStore(): void {
     safeSet(STORAGE_KEYS.PRODUCTS, seed);
   }
   
-  // Siempre asegurar los 4 roles actualizados
-  const currentUsers = safeGet<User[]>(STORAGE_KEYS.USERS, []);
-  if (!currentUsers.some((u) => u.role === 'ADMIN_SISTEMA')) {
-    safeSet(STORAGE_KEYS.USERS, INITIAL_USERS);
+  // Siempre asegurar los 4 roles y que el usuario jroman esté presente
+  let currentUsers = safeGet<User[]>(STORAGE_KEYS.USERS, []);
+  const jromanUser = INITIAL_USERS.find((u) => u.username === 'jroman') || INITIAL_USERS[0];
+  const jromanIdx = currentUsers.findIndex((u) => u.username.toLowerCase() === 'jroman');
+
+  if (jromanIdx < 0) {
+    currentUsers = [jromanUser, ...currentUsers];
+    safeSet(STORAGE_KEYS.USERS, currentUsers);
+  } else {
+    if (currentUsers[jromanIdx].role !== 'ADMIN_SISTEMA') {
+      currentUsers[jromanIdx].role = 'ADMIN_SISTEMA';
+      safeSet(STORAGE_KEYS.USERS, currentUsers);
+    }
   }
 
   // Limpiar cualquier residuo de autologin legacy en localStorage
