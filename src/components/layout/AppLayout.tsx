@@ -48,6 +48,7 @@ export function AppLayout({ children }: Props) {
     if (path.startsWith('/presupuestos')) return 'PRESUPUESTOS';
     if (path.startsWith('/ordenes-trabajo')) return 'ORDENES_TRABAJO';
     if (path.startsWith('/finanzas')) return 'FINANZAS';
+    if (path.startsWith('/balance')) return 'BALANCE';
     if (path.startsWith('/alertas')) return 'ALERTAS';
     if (path.startsWith('/licencias')) return 'LICENCIAS';
     if (path.startsWith('/auditoria')) return 'AUDITORIA';

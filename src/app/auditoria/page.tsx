@@ -344,50 +344,54 @@ Detalle: ${err.componentStack || 'Sin stack secundario'}`;
       </div>
 
       {/* Selector de Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200">
+      <div className="flex overflow-x-auto no-scrollbar gap-2 border-b border-slate-200 pb-px">
         <button
           onClick={() => setTab('AUDITORIA')}
-          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
             tab === 'AUDITORIA'
               ? 'border-amber-500 text-amber-600 bg-amber-50/50 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <FileText className="w-4 h-4" />
-          <span>Log de Auditoría ({auditLogs.length})</span>
+          <FileText className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">Log de Auditoría ({auditLogs.length})</span>
+          <span className="sm:hidden">Auditoría ({auditLogs.length})</span>
         </button>
         <button
           onClick={() => setTab('USUARIOS')}
-          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
             tab === 'USUARIOS'
               ? 'border-amber-500 text-amber-600 bg-amber-50/60 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Users className="w-4 h-4 text-amber-500" />
-          <span>Gestión & Alta de Usuarios ({allUsers.length})</span>
+          <Users className="w-4 h-4 shrink-0 text-amber-500" />
+          <span className="hidden sm:inline">Gestión & Alta de Usuarios ({allUsers.length})</span>
+          <span className="sm:hidden">Usuarios ({allUsers.length})</span>
         </button>
         <button
           onClick={() => setTab('PERMISOS')}
-          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
             tab === 'PERMISOS'
               ? 'border-purple-600 text-purple-700 bg-purple-50/50 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Shield className="w-4 h-4 text-purple-600" />
-          <span>Matriz de Roles Estándar (RBAC)</span>
+          <Shield className="w-4 h-4 shrink-0 text-purple-600" />
+          <span className="hidden sm:inline">Matriz de Roles Estándar (RBAC)</span>
+          <span className="sm:hidden">Roles (RBAC)</span>
         </button>
         <button
           onClick={() => setTab('ERRORES')}
-          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
             tab === 'ERRORES'
               ? 'border-red-500 text-red-600 bg-red-50/50 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Bug className="w-4 h-4" />
-          <span>Capturador de Errores ({errorLogs.length})</span>
+          <Bug className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">Capturador de Errores ({errorLogs.length})</span>
+          <span className="sm:hidden">Errores ({errorLogs.length})</span>
         </button>
       </div>
 

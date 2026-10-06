@@ -127,11 +127,11 @@ export default function AlertasPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto mt-2 md:mt-0">
                   {notif.requiresEvidence ? (
                     <button
                       onClick={() => handleResolveClick(notif)}
-                      className="py-3 px-5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 flex items-center gap-2 transition-all"
+                      className="w-full md:w-auto py-3 px-5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 flex items-center justify-center gap-2 transition-all"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Confirmar Transacción</span>
@@ -139,7 +139,7 @@ export default function AlertasPage() {
                   ) : (
                     <button
                       onClick={() => handleDismissSimple(notif.id)}
-                      className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                      className="w-full md:w-auto py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors text-center"
                     >
                       Marcar como leída
                     </button>

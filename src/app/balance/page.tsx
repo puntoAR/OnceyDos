@@ -541,41 +541,44 @@ export default function BalancePage() {
       </div>
 
       {/* Selector de Pestañas de Vista */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200">
+      <div className="flex overflow-x-auto no-scrollbar gap-2 border-b border-slate-200 pb-px">
         <button
           onClick={() => setActiveTab('CONSOLIDADO')}
-          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
             activeTab === 'CONSOLIDADO'
               ? 'border-amber-500 text-amber-600 bg-amber-50/50 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Scale className="w-4 h-4" />
-          <span>Consolidado & Desglose de Medios de Pago</span>
+          <Scale className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">Consolidado & Desglose de Medios de Pago</span>
+          <span className="sm:hidden">Consolidado</span>
         </button>
 
         <button
           onClick={() => setActiveTab('VENTAS')}
-          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
             activeTab === 'VENTAS'
               ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Receipt className="w-4 h-4 text-emerald-600" />
-          <span>Detalle de Ventas / Ingresos ({periodSales.length})</span>
+          <Receipt className="w-4 h-4 shrink-0 text-emerald-600" />
+          <span className="hidden sm:inline">Detalle de Ventas / Ingresos ({periodSales.length})</span>
+          <span className="sm:hidden">Ventas ({periodSales.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('COMPRAS')}
-          className={`py-3 px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 ${
+          className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${
             activeTab === 'COMPRAS'
               ? 'border-red-600 text-red-700 bg-red-50/50 rounded-t-lg'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Building2 className="w-4 h-4 text-red-600" />
-          <span>Compras a Proveedores / Egresos ({periodPurchases.length})</span>
+          <Building2 className="w-4 h-4 shrink-0 text-red-600" />
+          <span className="hidden sm:inline">Compras a Proveedores / Egresos ({periodPurchases.length})</span>
+          <span className="sm:hidden">Compras ({periodPurchases.length})</span>
         </button>
       </div>
 
@@ -1056,8 +1059,8 @@ export default function BalancePage() {
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                   Ítems y Materiales Comprados ({selectedPurchase.items.length})
                 </h4>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                  <table className="w-full text-left border-collapse text-xs">
+                <div className="border border-slate-200 rounded-2xl overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                     <thead>
                       <tr className="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase border-b border-slate-200">
                         <th className="py-2.5 px-3">Código</th>

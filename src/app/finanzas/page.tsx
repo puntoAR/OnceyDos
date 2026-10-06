@@ -198,22 +198,23 @@ export default function FinanzasPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2 border-b border-slate-200">
+      <div className="flex overflow-x-auto no-scrollbar gap-2 border-b border-slate-200 pb-px">
         {[
-          { id: 'CHEQUES', label: 'Cartera de Cheques & Compromisos' },
-          { id: 'CUENTAS_CORRIENTES', label: 'Cuentas Corrientes Clientes' },
-          { id: 'PROVEEDORES', label: 'Directorio de Proveedores' },
+          { id: 'CHEQUES', label: 'Cartera de Cheques & Compromisos', shortLabel: 'Cheques' },
+          { id: 'CUENTAS_CORRIENTES', label: 'Cuentas Corrientes Clientes', shortLabel: 'Cuentas Corrientes' },
+          { id: 'PROVEEDORES', label: 'Directorio de Proveedores', shortLabel: 'Proveedores' },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id as any)}
-            className={`py-3 px-4 font-bold text-xs border-b-2 transition-all ${
+            className={`py-3 px-3 sm:px-4 font-bold text-xs border-b-2 transition-all whitespace-nowrap shrink-0 ${
               tab === t.id
                 ? 'border-amber-500 text-amber-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            {t.label}
+            <span className="hidden sm:inline">{t.label}</span>
+            <span className="sm:hidden">{t.shortLabel}</span>
           </button>
         ))}
       </div>

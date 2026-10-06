@@ -75,9 +75,9 @@ export function MandatoryEvidenceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-red-200 overflow-hidden">
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-red-200 overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header con advertencia estricta */}
-        <div className="bg-red-600 text-white p-5 flex items-start justify-between">
+        <div className="bg-red-600 text-white p-5 flex items-start justify-between shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
               <ShieldAlert className="w-6 h-6 text-white" />
@@ -100,7 +100,7 @@ export function MandatoryEvidenceModal({
         </div>
 
         {/* Detalle del compromiso */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto">
           <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-4 text-sm">
             <div className="flex justify-between items-start mb-2">
               <span className="font-bold text-slate-800 text-base">{obligation.title}</span>
